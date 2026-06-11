@@ -1,0 +1,16 @@
+{
+  "name": "horrorgeticon-ops",
+  "version": "1.0.0",
+  "description": "Horrorgeticon Ops — modulare Event-Management-Plattform für die Horrornacht (Leitstand, Maze-Crew, Catering, Fahrgruppen).",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server/main.js",
+    "demo": "node server/main.js --demo",
+    "test": "node server/test/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,21 @@
+# Versionskatalog — bei Bedarf anheben (siehe kmp/README.md, Abschnitt „Versionen“)
+[versions]
+kotlin = "2.1.0"
+composeMultiplatform = "1.7.3"
+agp = "8.7.3"
+androidx-activity = "1.9.3"
+webview = "2.0.1"          # io.github.kevinnzou : compose-webview-multiplatform
+
+android-compileSdk = "35"
+android-minSdk = "26"
+android-targetSdk = "35"
+
+[libraries]
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
+compose-webview-multiplatform = { module = "io.github.kevinnzou:compose-webview-multiplatform", version.ref = "webview" }
+
+[plugins]
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+androidApplication = { id = "com.android.application", version.ref = "agp" }
