@@ -4,7 +4,7 @@ import { h, ic, badge, av } from '../core/dom.js';
 import { get, post, act } from '../core/api.js';
 import { on } from '../core/store.js';
 import { ago } from '../core/fmt.js';
-import { statusBadge } from './shared.js';
+import { statusBadge, ACTOR_STATUS_META } from './shared.js';
 
 let filter = 'alle';
 
@@ -48,7 +48,11 @@ export async function attendanceView({ onCleanup, refresh }) {
                 h('span', {}, r.name),
                 r.selfCreated && h('span', { class: 'sub', style: { color: '#b8901c' } }, '⚠ Profil unverknüpft')))),
             h('td', {}, r.maze ? `${r.maze} · ${r.position}` : (r.roles || []).join(', ')),
-            h('td', {}, statusBadge(r.status)),
+            h('td', {}, h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
+              statusBadge(r.status),
+              r.actorStatus && r.actorStatus !== 'da' && r.status !== 'out' &&
+                badge('plain', ACTOR_STATUS_META[r.actorStatus]?.label || r.actorStatus),
+              r.late && badge('warn', `⏰ +${r.late.etaMin} min`, { dot: true }))),
             h('td', { class: 'num' }, r.since ? new Date(r.since).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'),
             h('td', { class: 'muted' }, r.status === 'out' ? '—' : ago(r.lastSeen)),
             h('td', { class: 'num' }, r.battery != null && r.status !== 'out' ? `${r.battery}%` : '—'),

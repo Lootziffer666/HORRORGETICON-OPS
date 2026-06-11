@@ -3,6 +3,7 @@
 // (Asylum A1–A8, Lena Krause auf A3, Vorfall im Keller, Catering Nord/Süd …).
 import crypto from 'node:crypto';
 import { id, now, iso, hhmm, hashPin } from '../kernel/util.js';
+import { TEMPLATES as CHECKLIST_TEMPLATES, TYPE_LABEL as CHECKLIST_LABEL } from '../modules/checklists.mod.js';
 
 export function ensureBaseline(db) {
   if (!db.get('settings', 'main')) {
@@ -12,12 +13,16 @@ export function ensureBaseline(db) {
       nightLabel: 'Horrornacht · Fr 31.10.',
       eventDate: `${new Date().getFullYear()}-10-31`,
       active: true,
+      phase: 'vorbereitung', // Lifecycle: vorbereitung → aufbau → live → abschluss
       shiftStart: '18:00', shiftEnd: '01:00',
       secret: crypto.randomBytes(16).toString('hex'),
       catering: { drinksDefault: 3, mealsDefault: 1, drinksBudget: 240, mealsBudget: 60, ausgabeBis: '23:00' },
       carpool: { tolMinDefault: 20, maxUmwegKm: 25 },
     });
   }
+  // Bestände aus älteren Versionen: fehlende Phase nachrüsten (laufender Betrieb → live)
+  const s = db.get('settings', 'main');
+  if (s && !s.phase) db.patch('settings', 'main', { phase: 'live' });
   if (db.count('shifts') === 0) {
     db.put('shifts', 'sh_aufbau', { id: 'sh_aufbau', name: 'Aufbau & Maske', start: '16:00', end: '18:00', gruppe: 'crew', notiz: 'Treffpunkt Backstage' });
     db.put('shifts', 'sh_show', { id: 'sh_show', name: 'Showbetrieb', start: '18:00', end: '01:00', gruppe: 'crew', notiz: 'Wellen ab 18:30 alle 6 min' });
@@ -378,6 +383,79 @@ export function seedDemo(db) {
   msg('ch_crew', 18, 'Sina Brandt', 'Catering Nord: Kürbissuppe ist da. Essensmarken nicht vergessen.');
   msg(`ch_maze_${mazeIds.asylum}`, 13, 'Marco Tanner', 'A3: Strobo-Ausfall ist gemeldet, Technik kommt nach der nächsten Welle.');
   msg(`ch_maze_${mazeIds.asylum}`, 12, 'Lena Krause', 'Danke! Solange spiele ich mit der Taschenlampe.');
+
+  // ───────── Aufgaben (Dispatch-Demo) ─────────
+  const task = (idv, minAgo, title, opts = {}) => {
+    const t = rel(minAgo);
+    db.put('tasks', idv, {
+      id: idv, t, time: hhmm(t), title, desc: opts.desc || '',
+      prio: opts.prio || 'normal', critical: !!opts.critical,
+      status: opts.status || 'offen',
+      mazeId: opts.maze ? mazeIds[opts.maze] : null,
+      assigneeId: opts.who ? byName[opts.who]?.id || null : null,
+      deadline: opts.deadline || null, phase: opts.phase || null,
+      createdBy: opts.by || 'Daniel Roth', note: opts.note || null,
+      doneAt: opts.status === 'erledigt' ? rel(minAgo - 20) : undefined,
+      history: [{ t, time: hhmm(t), who: opts.by || 'Daniel Roth', action: 'erstellt' }],
+    });
+  };
+  task('t_strobo', 10, 'Ersatz-Stroboskop zu A3 bringen und anschließen', {
+    prio: 'hoch', critical: true, status: 'in_arbeit', maze: 'asylum', who: 'Marco Tanner',
+    desc: 'Ausfall gemeldet 21:36 — Ersatzgerät liegt im Technik-Lager, Regal B.', deadline: hhmm(rel(-20)), phase: 'live',
+  });
+  task('t_funk', 25, 'Ersatz-Funkgerät an Eingang Süd ausgeben', {
+    prio: 'hoch', status: 'offen', deadline: hhmm(rel(10)), phase: 'live', // überfällig (Demo)
+    desc: 'Defektes Gerät einsammeln und ins Lager legen.',
+  });
+  task('t_absperr', 4, 'Absperrung im Keller (A8) prüfen und verstärken', {
+    prio: 'hoch', critical: true, status: 'offen', maze: 'asylum', phase: 'live',
+    desc: 'Nach Gast-Durchbruch: Kabelbinder + zweite Stange aus dem Lager.',
+  });
+  task('t_wasser', 40, 'Wasserflaschen an Katakomben-Positionen verteilen', {
+    prio: 'niedrig', status: 'angenommen', maze: 'kata', who: 'Greta Simon', phase: 'live',
+  });
+  task('t_nebel', 70, 'Nebelfluid-Reserve in alle Mazes bringen', {
+    prio: 'normal', status: 'erledigt', who: 'Karim Said', phase: 'live',
+  });
+  task('t_blockiert', 33, 'Lautsprecher Seuchendorf-Gasse neu ausrichten', {
+    prio: 'normal', status: 'blockiert', maze: 'seuche', who: 'Viktor Berg', phase: 'live',
+    note: 'Leiter ist im Kettensäge-Lager eingeschlossen — Schlüssel fehlt.',
+  });
+  task('t_fundsachen', 5, 'Fundsachen-Kiste am Ausgang aufstellen', { prio: 'niedrig', status: 'offen', phase: 'abschluss' });
+  task('t_sweep', 6, 'Abschluss-Sweep-Plan an alle Leads verteilen', { prio: 'normal', status: 'offen', phase: 'abschluss' });
+  task('t_banner', 200, 'Einlass-Banner „Welle 40+“ aufhängen', { prio: 'normal', status: 'bestätigt', phase: 'aufbau', who: 'Jonas Weber' });
+
+  // ───────── Checklisten (Rundgänge) ─────────
+  // Je Maze: Sicherheit (Pflicht!) + Aufbau. Asylum: 1 Pflichtpunkt offen → Dashboard zeigt „nicht bereit“.
+  let clN = 0;
+  for (const m of db.all('mazes')) {
+    for (const type of ['sicherheit', 'aufbau']) {
+      const idv = `cl_${type}_${m.id}`;
+      const allDone = !(type === 'sicherheit' && m.id === mazeIds.asylum);
+      const items = CHECKLIST_TEMPLATES[type].map(([text, mandatory], i) => {
+        // Asylum-Sicherheit: Funkcheck (Pflicht) noch offen
+        const done = allDone ? true : !(mandatory && text.startsWith('Funkcheck'));
+        return {
+          id: `i${i + 1}`, text, mandatory, done,
+          doneBy: done ? (db.get('people', m.leadPersonId)?.name || 'Lead') : null,
+          doneAt: done ? rel(190 - clN * 3) : null,
+        };
+      });
+      db.put('checklists', idv, {
+        id: idv, type, title: `${CHECKLIST_LABEL[type]}-Rundgang`, mazeId: m.id,
+        items, createdBy: 'Daniel Roth', createdAt: iso(),
+        startedBy: db.get('people', m.leadPersonId)?.name || null,
+        completedAt: items.every((i) => !i.mandatory || i.done) ? rel(180 - clN * 3) : null,
+      });
+      clN++;
+    }
+  }
+
+  // Entscheidungslog-Beispiel
+  feedItem(8, '📌 Entscheidung: Keller-Abschnitt (A8) bleibt offen, Security postiert sich an der Absperrung.', 'entscheidung', 'info', 'Daniel Roth', 'asylum');
+
+  // Demo-Szenario = laufende Horrornacht
+  db.patch('settings', 'main', { phase: 'live' });
 
   db.snapshot('seed');
 }

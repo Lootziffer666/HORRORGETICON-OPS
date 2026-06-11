@@ -63,6 +63,41 @@ export default {
       };
     }, { roles: ['management'] });
 
+    // Übergabeprotokoll (horrops_fullstack.md: HandoverSummary) — alles, was
+    // die nächste Schicht / der Nachbericht wissen muss, in einer Antwort.
+    get('/api/reports/handover', async (ctx) => {
+      const mazeId = ctx.query.get('maze') || null;
+      const inMaze = (x) => !mazeId || x.mazeId === mazeId;
+      const posIds = new Set(db.find('positions', (p) => !mazeId || p.mazeId === mazeId).map((p) => p.id));
+
+      const tasks = db.find('tasks', (t) => inMaze(t) && t.status !== 'erledigt' && t.status !== 'bestätigt')
+        .map((t) => ({ id: t.id, title: t.title, status: t.status, prio: t.prio, critical: t.critical, note: t.note, assignee: t.assigneeId ? db.get('people', t.assigneeId)?.name : null }));
+      const incidents = db.find('incidents', (i) => inMaze(i) && i.status !== 'erledigt')
+        .map((i) => ({ id: i.id, time: i.time, text: i.text, prio: i.prio, status: i.status, ort: i.ort }));
+      const checklists = db.find('checklists', (c) => inMaze(c)).map((c) => ({
+        id: c.id, title: c.title, type: c.type,
+        done: c.items.filter((x) => x.done).length, total: c.items.length,
+        pflichtOffen: c.items.filter((x) => x.mandatory && !x.done).length,
+      }));
+      const breaks = db.find('breaks', (b) => b.status === 'läuft')
+        .filter((b) => {
+          const pos = db.one('positions', (x) => x.assignedPersonId === b.personId);
+          return !mazeId || pos?.mazeId === mazeId;
+        })
+        .map((b) => ({ person: db.get('people', b.personId)?.name || '?', seitMin: Math.round((Date.now() - (b.startedAt || b.requestedAt)) / 60000) }));
+      const openPositions = db.find('positions', (p) => posIds.has(p.id) && !p.assignedPersonId)
+        .map((p) => ({ code: p.code, name: p.name, maze: db.get('mazes', p.mazeId)?.name }));
+      const decisions = db.find('feed', (f) => f.kind === 'entscheidung' && (!mazeId || !f.mazeId || f.mazeId === mazeId))
+        .sort((a, b) => b.t - a.t).slice(0, 10);
+
+      return {
+        stand: new Date().toLocaleString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+        maze: mazeId ? db.get('mazes', mazeId)?.name || null : null,
+        offeneAufgaben: tasks, offeneVorfaelle: incidents, checklisten: checklists,
+        laufendePausen: breaks, unbesetztePositionen: openPositions, entscheidungen: decisions,
+      };
+    }, { roles: ['management', 'lead'] });
+
     get('/api/reports/season', async () => {
       const seasons = {};
       for (const p of db.all('people')) {

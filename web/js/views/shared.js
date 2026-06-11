@@ -235,6 +235,85 @@ export function incidentSheet({ onDone = null } = {}) {
   });
 }
 
+// ───────── Event-Phasen (Lifecycle) ─────────
+export const PHASES = ['vorbereitung', 'aufbau', 'live', 'abschluss'];
+export const PHASE_META = {
+  vorbereitung: { label: 'Vorbereitung', tone: 'plain', icon: 'cal', hint: 'Planung & Stammdaten — Tracking ruht.' },
+  aufbau: { label: 'Aufbau', tone: 'info', icon: 'gear', hint: 'Rundgänge & Aufbau-Aufgaben stehen im Fokus.' },
+  live: { label: 'LIVE', tone: 'ok', icon: 'radio', hint: 'Show läuft — Lagebild, Pausen, Meldungen.' },
+  abschluss: { label: 'Abschluss', tone: 'warn', icon: 'check', hint: 'Sweep, Übergaben, Berichte, Heimfahrt.' },
+};
+
+export function phaseBadge(phase) {
+  const m = PHASE_META[phase] || PHASE_META.vorbereitung;
+  return badge(m.tone, [ic(m.icon, 12), ` ${m.label}`], { dot: phase === 'live' });
+}
+
+// Phasen-Sheet (nur Management): Phase wechseln mit Hinweis, was passiert
+export function phaseSheet(currentPhase, onChanged) {
+  sheet({
+    title: 'Event-Phase', icon: 'cal', tone: 'info', center: true,
+    sub: 'Steuert, was die Crew sieht — Wechsel auf Live/Abschluss sendet automatisch eine Durchsage.',
+    content: (close) => h('div', { class: 'col', style: { gap: '10px' } },
+      ...PHASES.map((p) => {
+        const m = PHASE_META[p];
+        const on = p === currentPhase;
+        return h('div', {
+          class: 'card pad row role-card', style: { gap: '12px', padding: '14px', borderColor: on ? 'var(--color-secondary)' : undefined, boxShadow: on ? '0 0 0 1px var(--color-secondary), var(--shadow-1)' : undefined },
+          onclick: on ? null : () => act(async () => {
+            await post('/api/settings/phase', { phase: p });
+            close(); onChanged?.();
+          }, `Phase: ${m.label}`),
+        },
+          h('span', { class: 'av lg navy', style: { borderRadius: '12px' } }, ic(m.icon, 20)),
+          h('div', { class: 'col grow', style: { gap: '2px' } },
+            h('span', { style: { fontWeight: 800, fontFamily: 'var(--font-display)', fontSize: '15px' } }, m.label),
+            h('span', { class: 'sub' }, m.hint)),
+          on ? badge('ok', 'Aktiv', { dot: true }) : ic('chev', 16, { color: 'var(--fg-muted)' }));
+      })),
+  });
+}
+
+// ───────── Actor-Detail-Status + Verspätung ─────────
+export const ACTOR_STATUS_META = {
+  anreise: { label: 'Auf Anreise', icon: 'car' },
+  da: { label: 'Da', icon: 'check' },
+  maske: { label: 'In der Maske', icon: 'user' },
+  backstage: { label: 'Backstage', icon: 'door' },
+  position: { label: 'Auf Position', icon: 'pin' },
+  nicht_verfuegbar: { label: 'Nicht verfügbar', icon: 'x' },
+};
+
+export function lateBadge(late) {
+  if (!late) return null;
+  return badge('warn', `⏰ +${late.etaMin} min`, { style: null });
+}
+
+export function lateSheet(onDone) {
+  let eta = 15;
+  const reason = h('input', { placeholder: 'Grund (optional), z. B. Stau auf der B27' });
+  sheet({
+    title: 'Verspätung melden', icon: 'clock', tone: 'warn',
+    sub: 'Geht an Lead + Leitstand — dein Platz bleibt für dich reserviert.',
+    content: (close) => {
+      const row = h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } });
+      const draw = () => row.replaceChildren(...[10, 15, 30, 45, 60].map((m) =>
+        h('span', { class: 'chip' + (eta === m ? ' active' : ''), onclick: () => { eta = m; draw(); } }, `~${m} min`)));
+      draw();
+      return h('div', { class: 'col', style: { gap: '12px' } },
+        h('label', { class: 'fld' }, 'Ich brauche noch etwa …', row),
+        h('label', { class: 'fld' }, 'Grund', h('div', { class: 'inp' }, reason)),
+        h('button', {
+          class: 'btn lg orange',
+          onclick: () => act(async () => {
+            await post('/api/live/late', { etaMin: eta, reason: reason.value.trim() });
+            close(); onDone?.();
+          }, 'Gemeldet — komm gut an!'),
+        }, ic('send', 17), 'Verspätung melden'));
+    },
+  });
+}
+
 export const prioTone = { hoch: 'err', mittel: 'warn', niedrig: 'info' };
 export const prioLabel = { hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' };
 export const incStatusTone = { offen: 'err', in_arbeit: 'warn', erledigt: 'ok' };

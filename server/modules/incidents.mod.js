@@ -7,6 +7,9 @@ const KINDS = ['notfall', 'technik', 'gast', 'getraenk', 'sonstiges'];
 const PRIOS = ['hoch', 'mittel', 'niedrig'];
 const STATI = ['offen', 'in_arbeit', 'erledigt'];
 
+// Reaktions-SLA in Minuten (überschreibbar via settings.sla)
+const SLA_DEFAULT = { hoch: 5, mittel: 15, niedrig: 45 };
+
 export default {
   name: 'incidents',
   title: 'Meldungen & Warnungen',
@@ -14,12 +17,22 @@ export default {
   description: 'Vorfälle melden, priorisieren, zuweisen, erledigen; Reaktionszeit-Statistik.',
 
   routes({ get, post, patch }, { db, bus, feed }) {
-    const enrich = (i) => ({
-      ...i,
-      by: db.get('people', i.byPersonId)?.name || i.byName || '?',
-      assigneeName: i.assignee ? db.get('people', i.assignee)?.name || null : null,
-      maze: i.mazeId ? db.get('mazes', i.mazeId)?.name || null : null,
-    });
+    const enrich = (i) => {
+      const sla = { ...SLA_DEFAULT, ...(db.get('settings', 'main')?.sla || {}) };
+      const targetMin = sla[i.prio] ?? 15;
+      // SLA misst die Zeit bis zur ersten Reaktion (Übernahme/Erledigung)
+      const reacted = i.ackAt != null || i.status !== 'offen';
+      const elapsedMin = (now() - i.t) / 60000;
+      return {
+        ...i,
+        by: db.get('people', i.byPersonId)?.name || i.byName || '?',
+        assigneeName: i.assignee ? db.get('people', i.assignee)?.name || null : null,
+        maze: i.mazeId ? db.get('mazes', i.mazeId)?.name || null : null,
+        slaMin: targetMin,
+        slaLeftMin: reacted ? null : Math.ceil(targetMin - elapsedMin),
+        overdue: !reacted && elapsedMin > targetMin,
+      };
+    };
 
     get('/api/incidents', async (ctx) => {
       let list = db.all('incidents');

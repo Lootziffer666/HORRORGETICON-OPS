@@ -118,11 +118,24 @@ export default {
       };
     }, { roles: ['management', 'lead'] });
 
+    // Entscheidungslog (horrops_fullstack.md: DecisionLog) — dokumentierte
+    // Leitstand-Entscheidungen landen markiert im zentralen Feed.
+    post('/api/feed/decision', async (ctx) => {
+      const text = need(ctx.body, 'text').slice(0, 400);
+      const item = feed(`📌 Entscheidung: ${text}`, {
+        kind: 'entscheidung', level: 'info', by: ctx.person.name,
+        mazeId: ctx.body.mazeId || null,
+      });
+      return item;
+    }, { roles: ['management', 'lead'] });
+
     get('/api/feed', async (ctx) => {
       const limit = Number(ctx.query.get('limit') || 80);
       const mazeId = ctx.query.get('maze');
+      const kind = ctx.query.get('kind');
       let list = db.all('feed').sort((a, b) => b.t - a.t);
       if (mazeId) list = list.filter((f) => !f.mazeId || f.mazeId === mazeId);
+      if (kind) list = list.filter((f) => f.kind === kind);
       return list.slice(0, limit);
     });
   },

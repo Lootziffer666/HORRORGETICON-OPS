@@ -6,7 +6,8 @@ import { get } from '../core/api.js';
 import { guardedView } from '../core/ui.js';
 import { hhmm } from '../core/fmt.js';
 import { logout, switchRole } from '../app.js';
-import { announceSheet } from '../views/shared.js';
+import { announceSheet, phaseSheet, PHASE_META } from '../views/shared.js';
+import { tasksView } from '../views/tasks.js';
 
 import { dashboardView } from '../views/dashboard.js';
 import { livemapView } from '../views/livemap.js';
@@ -31,6 +32,7 @@ const NAV = [
   { id: 'dash', label: 'Dashboard', icon: 'grid', view: dashboardView },
   { id: 'map', label: 'Live-Karte', icon: 'map', view: livemapView },
   { id: 'anwesenheit', label: 'Anwesenheit', icon: 'check', view: attendanceView },
+  { id: 'aufgaben', label: 'Aufgaben', icon: 'list', view: tasksView, cnt: 'tasks' },
   { id: 'pausen', label: 'Pausen', icon: 'pause', view: breaksView, cnt: 'breaks' },
   { id: 'meldungen', label: 'Meldungen', icon: 'alert', view: incidentsView, cnt: 'incidents' },
   { id: 'durchsagen', label: 'Durchsagen', icon: 'mega', view: announceView },
@@ -53,8 +55,22 @@ export function renderDesktop(root) {
   const navEl = h('nav');
   const body = h('div', { class: 'dt-body' });
   const title = h('h1', {}, '');
-  const liveClock = h('span', { class: 'live-dot' }, h('i'), `LIVE · ${hhmm(Date.now())}`);
-  setInterval(() => { liveClock.lastChild.textContent = `LIVE · ${hhmm(Date.now())}`; }, 15000);
+
+  // Eine phasenbewusste Live-Anzeige: zeigt Phase + Uhrzeit, Klick wechselt die Phase
+  const liveClock = h('span', {
+    class: 'live-dot', style: { cursor: 'pointer', whiteSpace: 'nowrap', flex: 'none' },
+    title: 'Event-Phase wechseln',
+  }, h('i'), '');
+  const drawPhase = () => {
+    const phase = store.settings?.phase || 'vorbereitung';
+    const m = PHASE_META[phase];
+    liveClock.lastChild.textContent = `${phase === 'live' ? 'LIVE' : m.label.toUpperCase()} · ${hhmm(Date.now())}`;
+    liveClock.firstChild.style.background = phase === 'live' ? 'var(--color-success)' : phase === 'abschluss' ? 'var(--color-warning)' : 'var(--fg-muted)';
+    liveClock.style.color = phase === 'live' ? 'var(--color-success)' : phase === 'abschluss' ? '#b8901c' : 'var(--fg-muted)';
+  };
+  drawPhase();
+  setInterval(drawPhase, 15000);
+  liveClock.addEventListener('click', () => phaseSheet(store.settings?.phase || 'vorbereitung', drawPhase));
 
   const search = h('input', { placeholder: 'Person, Maze, Position …', style: { fontSize: '12.5px' } });
   search.addEventListener('keydown', (e) => {
@@ -88,7 +104,7 @@ export function renderDesktop(root) {
           h('button', { class: 'btn orange sm', style: { padding: '8px 14px' }, onclick: () => announceSheet({}) }, ic('mega', 15), 'Durchsage')),
         body)));
 
-  const counters = { breaks: 0, incidents: 0, chat: 0 };
+  const counters = { breaks: 0, incidents: 0, chat: 0, tasks: 0 };
   let active = null;
   let currentGuard = null;
   let cleanupFns = [];
@@ -106,12 +122,14 @@ export function renderDesktop(root) {
 
   const refreshCounters = async () => {
     try {
-      const [breaks, incidents, channels] = await Promise.all([
+      const [breaks, incidents, channels, board] = await Promise.all([
         get('/api/breaks?status=offen'), get('/api/incidents?status=offen'), get('/api/chat/channels'),
+        get('/api/tasks/board').catch(() => null),
       ]);
       counters.breaks = breaks.length;
       counters.incidents = incidents.length;
       counters.chat = channels.reduce((s, c) => s + (c.unread || 0), 0);
+      counters.tasks = board ? board.byStatus.offen + board.blockiert : 0;
       drawNav();
     } catch { /* Zähler sind Komfort */ }
   };
@@ -135,8 +153,8 @@ export function renderDesktop(root) {
   };
 
   window.addEventListener('hashchange', route);
-  on(['breaks', 'incidents', 'chat'], refreshCounters);
-  on('shell.refresh', drawNav);
+  on(['breaks', 'incidents', 'chat', 'tasks'], refreshCounters);
+  on('shell.refresh', () => { drawNav(); drawPhase(); });
   refreshCounters();
   if (!location.hash) location.hash = '#/dash';
   mount(root, shell);

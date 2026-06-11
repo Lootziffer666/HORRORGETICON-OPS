@@ -2,23 +2,33 @@
 // Pausen-Anfragen, Offene Positionen, Maze-Status (Mockup MgmtDashboard).
 import { h, ic, badge, bar, panel } from '../core/dom.js';
 import { get, patch, act } from '../core/api.js';
-import { on } from '../core/store.js';
+import { on, store } from '../core/store.js';
 import { prioTone, prioLabel, kpi, breakRequestCard } from './shared.js';
 import { sheet } from '../core/ui.js';
 
 export async function dashboardView({ onCleanup, refresh }) {
-  const [ov, incidents, breaks, issues] = await Promise.all([
+  const [ov, incidents, breaks, issues, readiness] = await Promise.all([
     get('/api/live/overview'),
     get('/api/incidents?status=offen'),
     get('/api/breaks?status=offen'),
     get('/api/assignments/issues'),
+    get('/api/checklists/readiness').catch(() => null),
   ]);
-  onCleanup(on(['live', 'breaks', 'incidents', 'mazes'], refresh));
+  onCleanup(on(['live', 'breaks', 'incidents', 'mazes', 'checklists', 'settings'], refresh));
 
   const k = ov.kpi;
   const openCritical = incidents.filter((i) => i.status === 'offen' || i.status === 'in_arbeit').slice(0, 4);
+  const phase = store.settings?.phase || 'live';
+  // „Sind wir bereit?“ — vor Showstart prominent (horrops_fullstack.md)
+  const readyRow = phase !== 'live' && phase !== 'abschluss' && readiness && readiness.some((r) => r.listen > 0) &&
+    h('div', { class: 'card pad row', style: { gap: '8px', flexWrap: 'wrap', borderColor: readiness.every((r) => r.bereit || !r.listen) ? 'var(--color-success)' : 'var(--color-warning)' } },
+      h('span', { style: { fontWeight: 800, fontFamily: 'var(--font-display)', fontSize: '14px' } }, 'Sind wir bereit?'),
+      ...readiness.map((r) => badge(r.bereit ? 'ok' : r.listen ? 'err' : 'plain',
+        `${r.maze}${r.bereit ? ' ✓' : r.listen ? `: ${r.pflichtOffen} Pflicht offen` : ': keine Rundgänge'}`, { dot: r.listen > 0 })),
+      h('span', { class: 'link right', onclick: () => { location.hash = '#/aufgaben'; } }, 'Zu den Rundgängen'));
 
   return h('div', { class: 'col', style: { gap: '14px', flex: 1, minHeight: 0 } },
+    readyRow,
     h('div', { class: 'kpis', style: { gridTemplateColumns: 'repeat(4, 1fr)' } },
       kpi(String(k.anwesend), 'Anwesend (Crew)', { text: k.fehlen > 0 ? `${k.fehlen} fehlen${k.unverknuepft ? ` · ${k.unverknuepft} unverknüpft` : ''}` : 'alle da 🎉', tone: k.fehlen > 0 ? 'var(--color-error)' : 'var(--color-success)' }, { suffix: `/ ${k.crewGesamt}` }),
       kpi(String(k.positionenBesetzt), 'Positionen besetzt', { text: `${k.positionenGesamt - k.positionenBesetzt} offen — ${issues.open.length} ohne Zuteilung`, tone: '#b8901c' }, { suffix: `/ ${k.positionenGesamt}` }),
@@ -33,7 +43,8 @@ export async function dashboardView({ onCleanup, refresh }) {
             badge(prioTone[m.prio], prioLabel[m.prio], { dot: true }),
             h('div', { class: 'col grow', style: { gap: '1px' } },
               h('span', { class: 'nm', style: { fontSize: '13px' } }, m.text),
-              h('span', { class: 'mt' }, `${m.time} · ${m.by}${m.ort ? ' · ' + m.ort : ''}`)),
+              h('span', { class: 'mt' }, `${m.time} · ${m.by}${m.ort ? ' · ' + m.ort : ''}${m.overdue ? ' · ' : ''}`,
+                m.overdue && h('b', { class: 'danger-text' }, `SLA +${Math.abs(m.slaLeftMin)} min`))),
             h('button', {
               class: 'btn sm quiet',
               onclick: () => decideSheet(m, refresh),

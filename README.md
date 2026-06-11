@@ -31,7 +31,8 @@ Ohne `--demo` startet die Plattform leer für den Echtbetrieb.
 | `LK-0427` | `1234` | Scare Actor → Phone-App (A3 „Zellenblock“)     |
 | `SB-0901` | `1234` | Catering → Stations-Modus (Marken entwerten)   |
 
-Tests: `npm test` (89 API-End-to-End-Checks inkl. Crash-Wiederherstellung).
+Tests: `npm test` (125 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
+optionaler Browser-E2E: `server/test/ui.e2e.mjs` (47 Checks, benötigt Playwright).
 
 ---
 
@@ -56,24 +57,36 @@ Drumherum (Serverwahl, Vollbild, Fehlerbilder, Installer).
 ## Was die Plattform kann
 
 **Leitstand (Management, Desktop)**
-Dashboard mit Live-KPIs · Live-Karte (Gelände-Zonen + Maze-Detail) ·
-Anwesenheit mit Fremd-Check-in · Teilnehmerverwaltung mit Suche/Status/Historie ·
-Maze-Zuteilung per Drag & Drop inkl. Konflikt-Erkennung (offen/doppelt) ·
-Pausen-Freigaben mit Springer-Vorschlag · Meldungs-Workflow mit
-Ø-Reaktionszeit · Durchsagen mit Lesebestätigungs-Quote · Chat ·
-Catering-Kontingente & Stationen · Fahrgruppen-Matching · Zeitplan mit
-gestaffeltem Pausenplan · Berichte & Saison-Historie.
+Dashboard mit Live-KPIs und „Sind wir bereit?“-Zeile · Live-Karte
+(Gelände-Zonen + Maze-Detail) · Anwesenheit mit Fremd-Check-in ·
+**Event-Phasen** (Vorbereitung → Aufbau → Live → Abschluss, klickbar in der
+Topbar, mit automatischer Durchsage) · **Aufgaben & Dispatch** (Board nach
+Status, an Mazes/Personen verteilen, Fristen + Überfällig-Markierung) ·
+**Checklisten/Rundgänge** mit Pflichtpunkten und Readiness-Übersicht ·
+Teilnehmerverwaltung mit Suche/Status/Historie · Maze-Zuteilung per
+Drag & Drop inkl. Konflikt-Erkennung · Pausen-Freigaben mit
+Springer-Vorschlag · Meldungs-Workflow mit Ø-Reaktionszeit und
+**SLA-Überfällig-Badges** · Durchsagen mit Lesebestätigungs-Quote +
+**Entscheidungslog** · Chat · Catering-Kontingente & Stationen ·
+Fahrgruppen-Matching · Zeitplan mit gestaffeltem Pausenplan · Berichte.
 
 **Scare Actor (Phone)**
-Check-in/-out · Schichtkarte mit Fortschritt · Schnellaktionen (Pause anfragen,
-Getränk anfordern, Warnung melden mit automatischer Position, Maze-Karte mit
-Live-Pins & Nachbarn) · Vollbild-Alarm mit Lesebestätigung · Chat ·
-Marken-Wallet · Profil mit Verknüpfung & Fahrgemeinschaft.
+Check-in/-out · phasenbewusste Schichtkarte (Aufbau / Live mit Fortschritt /
+Abschluss-Wrap-up) · **Detail-Status** (Bereit · Maske · Backstage · Auf
+Position) · **„Ich verspäte mich“** mit ETA (geht auch vor dem Check-in) ·
+Schnellaktionen (Pause anfragen, Getränk anfordern, Warnung melden mit
+automatischer Position, Maze-Karte mit Live-Pins & Nachbarn) · **Meine
+Aufgaben** mit Abhaken & Blocker-Meldung · Vollbild-Alarm mit
+Lesebestätigung · Chat · Marken-Wallet · Profil mit Verknüpfung &
+Fahrgemeinschaft.
 
 **Maze Lead (Tablet)**
-Split-Ansicht Team + Karte · Mini-KPIs · Pausen-Freigabe (sofort / in 15 min /
-ablehnen) · Vorfall übernehmen · „Warnung an Maze“ (Vollbild-Alarm bei allen
-Empfängern) · offene Positionen direkt besetzen.
+Split-Ansicht Team + Karte (inkl. Detail-Status & Verspätungs-Badges) ·
+Mini-KPIs · **Aufgaben-Inbox** (annehmen, delegieren, Blocker melden) ·
+**Rundgänge** (Sicherheit/Aufbau/Pre-Show/Abschluss mit Pflichtpunkten) ·
+**Übergabe & Nachbericht** (druckbares Protokoll: offene Aufgaben, Vorfälle,
+Checklisten, Pausen, unbesetzte Positionen, Entscheidungen) ·
+Pausen-Freigabe · Vorfall übernehmen · „Warnung an Maze“ (Vollbild-Alarm).
 
 **Catering-Station (Tablet)**
 Station übernehmen · QR-Kamera-Scan (BarcodeDetector) oder manuelle
@@ -123,9 +136,10 @@ Tageszähler · Tagesabschluss mit Druckansicht.
 ```
 server/            Node.js ≥ 18, null Abhängigkeiten
   kernel/          Modul-Kernel, DB (Journal/Snapshot/Backups), SSE-Bus, Auth, CSV, Geo
-  modules/         16 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
+  modules/         18 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
   seed/            Demo-Szenario „Horrornacht“ (Datenstand der Mockups)
-  test/smoke.mjs   89 API-End-to-End-Checks (npm test)
+  test/smoke.mjs   125 API-End-to-End-Checks (npm test)
+  test/ui.e2e.mjs  47 Browser-E2E-Checks (optional, Playwright)
 web/               PWA — Hearthwork-Design aus dem Prototyp, kein Build-Schritt
   js/core/         DOM/Store/SSE/API/QR-Encoder (eigener, verifizierter Encoder)
   js/shell/        Desktop- / Tablet- / Station- / Phone-Shell + Login
