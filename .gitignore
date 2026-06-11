@@ -1,0 +1,21 @@
+# Laufzeitdaten (DB, Journal, Backups) — niemals einchecken
+data/
+*.log
+
+# Entpackter Design-Prototyp (Quelle bleibt das Zip im Repo)
+_prototype_extract/
+
+# Node
+node_modules/
+
+# KMP / Gradle
+kmp/.gradle/
+kmp/build/
+kmp/**/build/
+kmp/local.properties
+kmp/.kotlin/
+
+# OS / IDE
+.DS_Store
+.idea/
+*.iml

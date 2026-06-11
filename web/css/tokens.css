@@ -1,0 +1,402 @@
+/**
+ * Hearthwork Design System — Full Token Sheet
+ * Colors · Typography · Spacing · Radii · Shadows · Motion · Elevation · Dark Mode
+ * Source: UI Style Guidelines by Yahya Amirudin + Hearthwork brand extensions
+ */
+
+/* ─────────────────────────────────────────────
+   GOOGLE FONTS
+   Nunito  → Cozy: display, wordmark, hero text (rounded, warm)
+   DM Sans → Cool: UI, body, labels      (crisp, geometric)
+   DM Mono → Code/technical use
+───────────────────────────────────────────── */
+/* DM Mono entfällt offline — Fallback: System-Monospace */
+
+/* ─────────────────────────────────────────────
+   SELF-HOSTED BRAND FONT — Nunito (variable)
+   Uploaded TTFs in fonts/. Replaces the CDN Nunito delivery.
+   Axis: wght 200–1000.
+───────────────────────────────────────────── */
+@font-face {
+  font-family: 'Nunito';
+  src: url('../fonts/Nunito-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─────────────────────────────────────────────
+   SELF-HOSTED BRAND FONT — DM Sans (variable)
+   Uploaded TTFs in fonts/. Replaces the CDN DM Sans delivery.
+   Axes: opsz 9–40, wght 100–1000.
+───────────────────────────────────────────── */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('../fonts/DMSans-VariableFont_opsz_wght.ttf') format('truetype-variations');
+  font-weight: 100 1000;
+  font-stretch: 75% 125%;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─────────────────────────────────────────────
+   BASE COLOR TOKENS (raw palette)
+───────────────────────────────────────────── */
+:root {
+  /* Brand */
+  --color-primary:       #0D2847;
+  --color-primary-600:   #0a2038;
+  --color-primary-700:   #071628;
+  --color-secondary:     #F2994A;
+  --color-secondary-600: #e08936;
+  --color-secondary-700: #c97820;
+
+  /* State */
+  --color-info:          #2F80ED;
+  --color-info-light:    #EBF3FD;
+  --color-success:       #27AE60;
+  --color-success-light: #E8F8EF;
+  --color-warning:       #E2B93B;
+  --color-warning-light: #FDF6E3;
+  --color-error:         #EB5757;
+  --color-error-light:   #FDEBEB;
+
+  /* Neutrals */
+  --color-black-1:       #000000;
+  --color-black-2:       #101010;
+  --color-black-3:       #282828;
+  --color-white:         #FFFFFF;
+  --color-off-white:     #F8F6F2;   /* warm off-white — default page bg */
+  --color-off-white-2:   #F0EDE7;   /* slightly deeper, for section contrast */
+
+  /* Grey Scale */
+  --color-gray-1:        #333333;
+  --color-gray-2:        #4F4F4F;
+  --color-gray-3:        #828282;
+  --color-gray-4:        #BDBDBD;
+  --color-gray-5:        #E0E0E0;
+  --color-gray-6:        #F0EFED;   /* extra light warm grey */
+
+  /* ─────────────────────────────────────────
+     SEMANTIC TOKENS — LIGHT MODE (default)
+  ───────────────────────────────────────── */
+
+  /* Surfaces */
+  --bg-page:             var(--color-off-white);
+  --bg-surface:          var(--color-white);
+  --bg-surface-raised:   var(--color-white);
+  --bg-surface-overlay:  rgba(255,255,255,0.92);
+  --bg-surface-dark:     var(--color-primary);
+  --bg-muted:            var(--color-off-white-2);
+  --bg-divider:          var(--color-gray-5);
+  --bg-section-alt:      var(--color-off-white-2);
+
+  /* Foregrounds */
+  --fg-primary:          var(--color-gray-1);
+  --fg-secondary:        var(--color-gray-2);
+  --fg-muted:            var(--color-gray-3);
+  --fg-disabled:         var(--color-gray-4);
+  --fg-inverse:          var(--color-white);
+  --fg-on-primary:       var(--color-white);
+  --fg-on-secondary:     var(--color-white);
+  --fg-brand:            var(--color-primary);
+
+  /* Interactive */
+  --interactive-primary:         var(--color-primary);
+  --interactive-primary-hover:   var(--color-primary-600);
+  --interactive-primary-active:  var(--color-primary-700);
+  --interactive-secondary:       var(--color-secondary);
+  --interactive-secondary-hover: var(--color-secondary-600);
+  --interactive-secondary-active:var(--color-secondary-700);
+  --interactive-disabled:        var(--color-gray-4);
+  --interactive-disabled-text:   var(--color-gray-3);
+
+  /* Borders */
+  --border-default:      var(--color-gray-5);
+  --border-muted:        var(--color-gray-6);
+  --border-focus:        var(--color-primary);
+  --border-error:        var(--color-error);
+  --border-success:      var(--color-success);
+  --border-warning:      var(--color-warning);
+
+  /* ─────────────────────────────────────────
+     TYPOGRAPHY
+  ───────────────────────────────────────── */
+
+  /* Font families */
+  --font-display:  'Nunito',  system-ui, sans-serif;    /* COZY: hero, wordmark, display */
+  --font-sans:     'DM Sans', system-ui, sans-serif;    /* COOL: UI, body, labels */
+  --font-body:     var(--font-sans);
+  --font-heading:  var(--font-sans);
+  --font-mono:     'DM Mono', 'Fira Code', monospace;
+
+  /* Font weights */
+  --fw-light:   300;
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semibold:600;
+  --fw-bold:    700;
+  --fw-extra:   800;
+  --fw-black:   900;
+
+  /* Heading scale (Inter-sourced, applied via DM Sans) */
+  --fs-h1: 56px;  --lh-h1: 61.6px;   /* 1.1× */
+  --fs-h2: 48px;  --lh-h2: 52.8px;
+  --fs-h3: 40px;  --lh-h3: 44px;
+  --fs-h4: 32px;  --lh-h4: 35.2px;
+  --fs-h5: 24px;  --lh-h5: 26.4px;
+  --fs-h6: 20px;  --lh-h6: 22px;
+
+  /* Body scale */
+  --fs-large:  20px;  --lh-large:  28px;    /* 1.4× */
+  --fs-medium: 18px;  --lh-medium: 25.2px;
+  --fs-normal: 16px;  --lh-normal: 22.4px;
+  --fs-small:  14px;  --lh-small:  19.6px;
+  --fs-xs:     12px;  --lh-xs:     16.8px;
+
+  /* Display scale (Nunito — for heroes, wordmarks) */
+  --fs-display-xl: 72px;  --lh-display-xl: 76px;
+  --fs-display-lg: 56px;  --lh-display-lg: 61.6px;
+  --fs-display-md: 48px;  --lh-display-md: 52.8px;
+
+  /* ─────────────────────────────────────────
+     SPACING SCALE (8px base)
+  ───────────────────────────────────────── */
+  --space-0:   4px;
+  --space-1:   8px;
+  --space-2:  16px;
+  --space-3:  24px;
+  --space-4:  32px;
+  --space-5:  40px;
+  --space-6:  56px;
+  --space-7:  72px;
+  --space-8:  80px;
+  --space-9:  96px;
+  --space-10:120px;
+
+  /* ─────────────────────────────────────────
+     BORDER RADIUS
+  ───────────────────────────────────────── */
+  --radius-xs:   2px;
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 9999px;
+
+  /* ─────────────────────────────────────────
+     ELEVATION / SHADOWS
+  ───────────────────────────────────────── */
+  --shadow-0:    none;
+  --shadow-1:    0 1px 3px rgba(0,0,0,0.06);          /* resting: small chips, pills */
+  --shadow-2:    0 2px 8px rgba(0,0,0,0.08);           /* card: default surface */
+  --shadow-3:    0 4px 16px rgba(0,0,0,0.10);          /* raised: hover card */
+  --shadow-4:    0 8px 24px rgba(0,0,0,0.12);          /* floating: dropdown, popover */
+  --shadow-5:    0 16px 48px rgba(0,0,0,0.16);         /* elevated: modal, drawer */
+  --shadow-6:    0 32px 80px rgba(0,0,0,0.20);         /* maximum: fullscreen overlay */
+
+  /* Aliases */
+  --shadow-card:     var(--shadow-2);
+  --shadow-card-hover: var(--shadow-3);
+  --shadow-dropdown: var(--shadow-4);
+  --shadow-modal:    var(--shadow-5);
+
+  /* ─────────────────────────────────────────
+     MOTION — DURATION TOKENS
+     Nano    100ms  micro feedback (press ripple)
+     Micro   150ms  hover, toggles, color shifts
+     Short   200ms  standard UI transitions
+     Medium  300ms  modals, dropdowns, drawers
+     Long    500ms  page transitions, hero fade
+     Slow    800ms  onboarding, ambient moments
+  ───────────────────────────────────────── */
+  --duration-nano:   100ms;
+  --duration-micro:  150ms;
+  --duration-short:  200ms;
+  --duration-medium: 300ms;
+  --duration-long:   500ms;
+  --duration-slow:   800ms;
+
+  /* ─────────────────────────────────────────
+     MOTION — EASING TOKENS
+     standard    most UI transitions (in+out)
+     decelerate  elements entering screen
+     accelerate  elements leaving screen
+     spring      playful/quirky — COZY-COOL signature
+     sharp       crisp, no settle
+     linear      progress bars, spinners
+  ───────────────────────────────────────── */
+  --ease-standard:   cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0.0, 1.0, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-sharp:      cubic-bezier(0.4, 0.0, 0.6, 1);
+  --ease-linear:     linear;
+
+  /* Composite transitions (most commonly used) */
+  --transition-hover:    background-color var(--duration-micro) var(--ease-standard),
+                         color var(--duration-micro) var(--ease-standard),
+                         border-color var(--duration-micro) var(--ease-standard),
+                         box-shadow var(--duration-micro) var(--ease-standard);
+  --transition-enter:    opacity var(--duration-medium) var(--ease-decelerate),
+                         transform var(--duration-medium) var(--ease-decelerate);
+  --transition-exit:     opacity var(--duration-short) var(--ease-accelerate),
+                         transform var(--duration-short) var(--ease-accelerate);
+  --transition-spring:   transform var(--duration-medium) var(--ease-spring);
+
+  /* ─────────────────────────────────────────
+     Z-INDEX SCALE
+  ───────────────────────────────────────── */
+  --z-below:   -1;
+  --z-base:     0;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+
+  /* ─────────────────────────────────────────
+     ICON SIZE TOKENS
+  ───────────────────────────────────────── */
+  --icon-xs:   16px;
+  --icon-sm:   20px;   /* "live area" from style guide */
+  --icon-md:   24px;   /* "full area" from style guide */
+  --icon-lg:   32px;
+  --icon-xl:   48px;
+  --icon-safe:  2px;   /* safe zone padding */
+
+  /* ─────────────────────────────────────────
+     GRID / LAYOUT TOKENS
+  ───────────────────────────────────────── */
+  --grid-gutter:        30px;
+  --grid-max-width:    1200px;
+  --grid-max-hd:       1440px;
+  --grid-cols-desktop:   12;
+  --grid-cols-tablet:     6;
+  --grid-cols-mobile:     2;
+
+  /* ─────────────────────────────────────────
+     FOCUS RING (accessibility)
+  ───────────────────────────────────────── */
+  --focus-ring: 0 0 0 3px rgba(13, 40, 71, 0.25);
+  --focus-ring-color: rgba(13, 40, 71, 0.25);
+}
+
+/* ─────────────────────────────────────────────
+   DARK MODE SEMANTIC OVERRIDES
+   Light mode is the default, always. Dark mode is OPT-IN only —
+   set [data-theme="dark"] on a wrapping element. It is intentionally
+   NOT applied from prefers-color-scheme, so the brand reads light-first.
+───────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg-page:             #0D2847;
+  --bg-surface:          #122f55;
+  --bg-surface-raised:   #1a3a65;
+  --bg-surface-overlay:  rgba(13,40,71,0.95);
+  --bg-muted:            #0a2038;
+  --bg-divider:          rgba(255,255,255,0.12);
+  --bg-section-alt:      #0a2038;
+
+  --fg-primary:          #F8F6F2;
+  --fg-secondary:        rgba(248,246,242,0.75);
+  --fg-muted:            rgba(248,246,242,0.50);
+  --fg-disabled:         rgba(248,246,242,0.30);
+  --fg-brand:            #F2994A;
+
+  --border-default:      rgba(255,255,255,0.15);
+  --border-muted:        rgba(255,255,255,0.08);
+  --border-focus:        #F2994A;
+
+  --shadow-2:    0 2px 8px rgba(0,0,0,0.30);
+  --shadow-3:    0 4px 16px rgba(0,0,0,0.40);
+  --shadow-4:    0 8px 24px rgba(0,0,0,0.50);
+  --shadow-5:    0 16px 48px rgba(0,0,0,0.60);
+}
+
+/* ─────────────────────────────────────────────
+   SEMANTIC ELEMENT STYLES
+───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-normal);
+  line-height: var(--lh-normal);
+  color: var(--fg-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+
+/* Headings use DM Sans by default */
+h1 { font-family: var(--font-heading); font-size: var(--fs-h1); line-height: var(--lh-h1); font-weight: var(--fw-bold); }
+h2 { font-family: var(--font-heading); font-size: var(--fs-h2); line-height: var(--lh-h2); font-weight: var(--fw-bold); }
+h3 { font-family: var(--font-heading); font-size: var(--fs-h3); line-height: var(--lh-h3); font-weight: var(--fw-bold); }
+h4 { font-family: var(--font-heading); font-size: var(--fs-h4); line-height: var(--lh-h4); font-weight: var(--fw-bold); }
+h5 { font-family: var(--font-heading); font-size: var(--fs-h5); line-height: var(--lh-h5); font-weight: var(--fw-bold); }
+h6 { font-family: var(--font-heading); font-size: var(--fs-h6); line-height: var(--lh-h6); font-weight: var(--fw-bold); }
+h1, h2, h3, h4, h5, h6 { color: var(--fg-primary); margin: 0; }
+
+/* .display — uses Nunito (the COZY side) */
+.display { font-family: var(--font-display); font-weight: var(--fw-black); }
+
+p { font-size: var(--fs-normal); line-height: var(--lh-normal); color: var(--fg-secondary); margin: 0; }
+small { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--fg-muted); }
+
+a { color: var(--color-primary); text-decoration: none; transition: var(--transition-hover); }
+a:hover { color: var(--color-primary-600); }
+
+code, pre {
+  font-family: var(--font-mono); font-size: 0.875em;
+  background: var(--bg-muted); border-radius: var(--radius-sm); padding: 2px 6px;
+}
+
+/* Focus ring — all interactive elements */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ─────────────────────────────────────────────
+   MOTION UTILITY CLASSES
+───────────────────────────────────────────── */
+
+/* Enter animations */
+@keyframes cc-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes cc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cc-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes cc-spring-in {
+  from { opacity: 0; transform: scale(0.90); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes cc-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cc-fade-up    { animation: cc-fade-up    var(--duration-medium) var(--ease-decelerate) both; }
+.cc-fade-in    { animation: cc-fade-in    var(--duration-medium) var(--ease-decelerate) both; }
+.cc-scale-in   { animation: cc-scale-in   var(--duration-medium) var(--ease-decelerate) both; }
+.cc-spring-in  { animation: cc-spring-in  var(--duration-medium) var(--ease-spring) both; }
+.cc-slide-down { animation: cc-slide-down var(--duration-medium) var(--ease-decelerate) both; }
+
+/* Press state — all interactive */
+.cc-pressable { transition: transform var(--duration-nano) var(--ease-standard); }
+.cc-pressable:active { transform: scale(0.97); }
+
+/* Hover lift — cards */
+.cc-hover-lift {
+  transition: transform var(--duration-short) var(--ease-standard),
+              box-shadow var(--duration-short) var(--ease-standard);
+}
+.cc-hover-lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-3); }
