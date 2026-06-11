@@ -6,10 +6,11 @@ import { on, store } from '../core/store.js';
 import { guardedView, toast, sheet } from '../core/ui.js';
 import { shiftProgress, minSince } from '../core/fmt.js';
 import { logout, switchRole } from '../app.js';
-import { mazeMapEl, mazeLegend, incidentSheet, feedList } from '../views/shared.js';
+import { mazeMapEl, mazeLegend, incidentSheet, feedList, lateSheet, ACTOR_STATUS_META, PHASE_META } from '../views/shared.js';
 import { chatView } from '../views/chat.js';
 import { walletView } from '../views/wallet.js';
 import { profileView } from '../views/profile.js';
+import { myTasksWidget } from '../views/tasks.js';
 
 const NAV = [
   ['start', 'Start', 'home'], ['karte', 'Karte', 'map'], ['chat', 'Chat', 'chat'],
@@ -103,34 +104,72 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
   }
 
   const s = store.settings || { shiftStart: '18:00', shiftEnd: '01:00' };
+  const phase = s.phase || 'live';
   const prog = shiftProgress(s.shiftStart, s.shiftEnd);
 
-  const shiftCard = h('div', { class: 'card pad col', style: { gap: '12px', padding: '16px' } },
-    h('div', { class: 'row' },
-      h('div', { class: 'col grow', style: { gap: '2px' } },
-        h('span', { class: 'overline' }, 'Deine Schicht heute'),
-        h('span', { style: { fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '20px' } },
-          meRow?.maze ? `${meRow.maze} · ${meRow.position}${meRow.positionName ? ` „${meRow.positionName}“` : ''}` : 'Noch keine Position zugeteilt')),
-      h('span', { class: 'av lg navy', style: { borderRadius: '12px' } }, ic('pin', 20))),
-    h('div', { class: 'row', style: { gap: '10px' } },
-      h('span', { class: 'num', style: { fontSize: '14px' } }, `${s.shiftStart} – ${s.shiftEnd}`),
-      h('div', { class: 'bar' }, h('i', { class: 'navy', style: { width: prog.pct + '%' } })),
-      h('span', { class: 'sub', style: { fontWeight: 700 } }, `noch ${prog.left}`)),
-    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
-      myBreak ? badge(myBreak.status === 'läuft' ? 'info' : 'warn',
-        myBreak.status === 'läuft' ? `Pause läuft · seit ${minSince(myBreak.startedAt)} min`
-          : myBreak.status === 'genehmigt' ? 'Pause freigegeben — starte, wenn abgelöst' : 'Pause angefragt — wartet', { dot: true })
-        : badge('info', 'Nächste Pause auf Anfrage', { dot: true }),
-      meRow?.selfCreated && badge('warn', 'Profil unverknüpft!', { dot: true })),
-    checkedIn
-      ? h('button', {
-        class: 'btn lg outline',
-        onclick: () => act(async () => { await post('/api/live/checkout'); refresh(); }, 'Ausgecheckt — gute Heimfahrt!'),
-      }, ic('out', 17), 'Check-out')
-      : h('button', {
-        class: 'btn lg orange',
-        onclick: () => act(async () => { await post('/api/live/checkin'); refresh(); }, 'Eingecheckt — viel Erfolg!'),
-      }, ic('check', 17), 'Jetzt einchecken'));
+  // Detail-Status-Chips (horrops_fullstack.md: ActorStatusPanel)
+  const statusChips = checkedIn && phase !== 'abschluss' && h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
+    ...[['da', 'Bereit'], ['maske', 'Maske'], ['backstage', 'Backstage'], ['position', 'Auf Position']].map(([v, l]) =>
+      h('span', {
+        class: 'chip' + (meRow?.actorStatus === v ? ' active' : ''),
+        onclick: () => act(async () => { await post('/api/live/status', { status: v }); refresh(); }, `Status: ${ACTOR_STATUS_META[v].label}`),
+      }, ic(ACTOR_STATUS_META[v].icon, 12), ` ${l}`)));
+
+  const checkoutBtn = h('button', {
+    class: 'btn lg ' + (phase === 'abschluss' ? 'orange' : 'outline'),
+    onclick: () => act(async () => { await post('/api/live/checkout'); refresh(); }, 'Ausgecheckt — gute Heimfahrt!'),
+  }, ic('out', 17), 'Check-out');
+  const checkinBtn = h('button', {
+    class: 'btn lg orange',
+    onclick: () => act(async () => { await post('/api/live/checkin'); refresh(); }, 'Eingecheckt — viel Erfolg!'),
+  }, ic('check', 17), 'Jetzt einchecken');
+
+  const headBlock = h('div', { class: 'row' },
+    h('div', { class: 'col grow', style: { gap: '2px' } },
+      h('span', { class: 'overline' }, phase === 'abschluss' ? 'Das war die Horrornacht' : phase === 'live' ? 'Deine Schicht heute' : `${PHASE_META[phase].label} · Schichtstart ${s.shiftStart}`),
+      h('span', { style: { fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '20px' } },
+        phase === 'abschluss' ? 'Danke für heute Nacht! 🎃'
+          : meRow?.maze ? `${meRow.maze} · ${meRow.position}${meRow.positionName ? ` „${meRow.positionName}“` : ''}` : 'Noch keine Position zugeteilt')),
+    h('span', { class: 'av lg navy', style: { borderRadius: '12px' } }, ic(phase === 'abschluss' ? 'check' : 'pin', 20)));
+
+  let shiftCard;
+  if (phase === 'abschluss') {
+    // Wrap-up (ActorPostShowInfo): Abschluss-Hinweise + Check-out im Fokus
+    shiftCard = h('div', { class: 'card pad col', style: { gap: '12px', padding: '16px' } },
+      headBlock,
+      h('span', { class: 'sub', style: { fontSize: '13px', lineHeight: 1.45 } },
+        'Requisiten sichern, Fundsachen abgeben, dann ab nach Hause. Deine Fahrgruppe findest du im Profil — Rückfahrt-Infos kommen über den Chat.'),
+      checkedIn ? checkoutBtn : badge('ok', 'Ausgecheckt — gute Heimfahrt!', { dot: true }));
+  } else if (phase !== 'live') {
+    // Vorbereitung/Aufbau: kein Schichtfortschritt, dafür Aufbau-Kontext
+    shiftCard = h('div', { class: 'card pad col', style: { gap: '12px', padding: '16px' } },
+      headBlock,
+      h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+        badge(PHASE_META[phase].tone, PHASE_META[phase].label, { dot: true }),
+        meRow?.late && badge('warn', `⏰ Verspätung gemeldet: +${meRow.late.etaMin} min`),
+        meRow?.selfCreated && badge('warn', 'Profil unverknüpft!', { dot: true })),
+      statusChips,
+      checkedIn ? checkoutBtn : checkinBtn,
+      !checkedIn && h('button', { class: 'btn lg quiet', onclick: () => lateSheet(refresh) }, ic('clock', 17), 'Ich verspäte mich'));
+  } else {
+    shiftCard = h('div', { class: 'card pad col', style: { gap: '12px', padding: '16px' } },
+      headBlock,
+      h('div', { class: 'row', style: { gap: '10px' } },
+        h('span', { class: 'num', style: { fontSize: '14px' } }, `${s.shiftStart} – ${s.shiftEnd}`),
+        h('div', { class: 'bar' }, h('i', { class: 'navy', style: { width: prog.pct + '%' } })),
+        h('span', { class: 'sub', style: { fontWeight: 700 } }, `noch ${prog.left}`)),
+      h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+        myBreak ? badge(myBreak.status === 'läuft' ? 'info' : 'warn',
+          myBreak.status === 'läuft' ? `Pause läuft · seit ${minSince(myBreak.startedAt)} min`
+            : myBreak.status === 'genehmigt' ? 'Pause freigegeben — starte, wenn abgelöst' : 'Pause angefragt — wartet', { dot: true })
+          : badge('info', 'Nächste Pause auf Anfrage', { dot: true }),
+        meRow?.late && badge('warn', `⏰ +${meRow.late.etaMin} min gemeldet`),
+        meRow?.selfCreated && badge('warn', 'Profil unverknüpft!', { dot: true })),
+      statusChips,
+      checkedIn ? checkoutBtn : h('div', { class: 'col', style: { gap: '8px' } },
+        checkinBtn,
+        h('button', { class: 'btn quiet', onclick: () => lateSheet(refresh) }, ic('clock', 16), 'Ich verspäte mich')));
+  }
 
   const qa = (cls, icon, label, onclick, disabled = false) => h('button', { class: 'qa', onclick, disabled },
     h('span', { class: `ic-ring ${cls}` }, ic(icon, 19)), label);
@@ -143,10 +182,14 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
     qa('err', 'alert', 'Warnung melden', () => incidentSheet({ onDone: refresh })),
     qa('warn', 'map', 'Maze-Karte', () => phoneGo('karte')));
 
+  const tasksWidget = await myTasksWidget(refresh).catch(() => null);
+  onCleanup(on(['tasks'], refresh));
+
   return h('div', { class: 'col', style: { gap: '12px', minHeight: 0, flex: 1 } },
     shiftCard,
     h('span', { class: 'overline' }, 'Schnellaktionen'),
     quick,
+    tasksWidget,
     h('div', { class: 'panel grow', style: { minHeight: '140px', overflow: 'hidden', display: 'flex' } },
       h('div', { class: 'panel-h' }, ic('mega', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Durchsagen & Feed')),
       h('div', { class: 'panel-b scroll', style: { gap: 0, paddingTop: '4px' } },

@@ -1,16 +1,31 @@
-// Management · Durchsagen — Verlauf mit Lesebestätigungen + Composer + Live-Feed
+// Management · Durchsagen — Verlauf mit Lesebestätigungen + Composer +
+// Live-Feed mit Entscheidungslog (dokumentierte Leitstand-Entscheidungen)
 import { h, ic, badge, panel } from '../core/dom.js';
-import { get } from '../core/api.js';
+import { get, post, act } from '../core/api.js';
 import { on } from '../core/store.js';
 import { announceSheet, feedList } from './shared.js';
-import { sheet } from '../core/ui.js';
+import { sheet, toast } from '../core/ui.js';
 
 const lvlTone = { info: 'info', wichtig: 'warn', notfall: 'err' };
 const lvlLabel = { info: 'Info', wichtig: 'Wichtig', notfall: 'NOTFALL' };
 
+let feedKind = '';
+
 export async function announceView({ onCleanup, refresh }) {
-  const [anns, feed] = await Promise.all([get('/api/announcements'), get('/api/feed?limit=60')]);
+  const [anns, feed] = await Promise.all([
+    get('/api/announcements'),
+    get(`/api/feed?limit=60${feedKind ? `&kind=${feedKind}` : ''}`),
+  ]);
   onCleanup(on(['announce', 'feed'], refresh));
+
+  // Entscheidungslog: kurze Eingabe direkt über dem Feed
+  const decisionInput = h('input', { placeholder: 'Entscheidung dokumentieren … (z. B. „Keller bleibt offen, Security postiert“)' });
+  const logDecision = () => {
+    const text = decisionInput.value.trim();
+    if (!text) { toast('Kurz beschreiben, was entschieden wurde', 'err'); return; }
+    act(async () => { await post('/api/feed/decision', { text }); decisionInput.value = ''; refresh(); }, 'Im Entscheidungslog notiert 📌');
+  };
+  decisionInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') logDecision(); });
 
   return h('div', { class: 'cols-2' },
     panel([ic('mega', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Durchsagen'),
@@ -24,8 +39,17 @@ export async function announceView({ onCleanup, refresh }) {
             h('span', { class: 'f-meta' }, `${a.byName} · ${a.scopeLabel}${a.requiresAck ? ' · mit Lesebestätigung' : ''}`)),
           a.requiresAck && h('button', { class: 'btn sm quiet', onclick: (e) => { e.stopPropagation(); readsSheet(a); } }, ic('eye', 13), 'Wer hat gelesen?'))),
       { scroll: true, bodyStyle: { gap: 0, paddingTop: '2px' } }),
-    panel([ic('radio', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Live-Feed (alles)')],
-      feedList(feed, { limit: 60 }), { scroll: true, bodyStyle: { gap: 0, paddingTop: '4px' } }));
+    panel([ic('radio', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Live-Feed & Entscheidungslog'),
+      h('span', {
+        class: 'chip right' + (feedKind === 'entscheidung' ? ' active' : ''), style: { fontSize: '11px' },
+        onclick: () => { feedKind = feedKind === 'entscheidung' ? '' : 'entscheidung'; refresh(); },
+      }, '📌 Nur Entscheidungen')],
+      h('div', { class: 'col grow', style: { gap: '10px', minHeight: 0 } },
+        h('div', { class: 'row', style: { gap: '8px', flex: 'none' } },
+          h('div', { class: 'inp sm grow' }, decisionInput),
+          h('button', { class: 'btn sm', onclick: logDecision }, '📌 Notieren')),
+        h('div', { class: 'scroll-y grow' }, feedList(feed, { limit: 60 }))),
+      { scroll: false, bodyStyle: { paddingTop: '10px', minHeight: 0 } }));
 }
 
 async function readsSheet(a) {

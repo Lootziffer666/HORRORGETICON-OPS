@@ -42,6 +42,18 @@ node server/main.js              # leerer Echtbetrieb (Daten in ./data)
 * Server im Event-LAN starten (`tools/start.sh` bzw. `start.bat`), Adresse
   z. B. `http://192.168.31.10:8787` am Crew-Büro aushängen (gern als QR).
 * Geräte: Browser/PWA oder KMP-App → Serveradresse eintragen → Login.
+* **Event-Phase setzen** (Klick auf die Live-Anzeige in der Topbar):
+  `Vorbereitung → Aufbau → Live → Abschluss`. Die Phase steuert, was die Crew
+  sieht (Aufbau-Karte vs. Schichtfortschritt vs. Wrap-up); Wechsel auf
+  Live/Abschluss sendet automatisch eine Durchsage.
+* **Rundgänge anlegen** (*Aufgaben → Checklisten & Rundgänge*): je Maze
+  mindestens Sicherheit + Aufbau (Vorlagen mit Pflichtpunkten eingebaut).
+  Leads haken auf dem Tablet ab (*Mehr → Rundgänge*); das Dashboard zeigt
+  in der Aufbau-Phase „Sind wir bereit?“ — erst wenn alle Pflichtpunkte
+  abgehakt sind, steht da überall ✓.
+* **Aufbau-Aufgaben dispatchen** (*Aufgaben*): erstellen, an Maze oder Person
+  verteilen, Priorität/Frist setzen. Leads nehmen in ihrer Inbox an oder
+  delegieren; Blocker brauchen immer eine Begründung und landen im Feed.
 * Catering: Stationen unter *Catering* anlegen; Stations-Tablets melden sich
   mit Catering-Konto an und **übernehmen ihre Station**. Kontingente zuweisen
   (*Catering → Kontingent zuweisen*, typ. 3 Getränke / 1 Essen an alle).
@@ -60,6 +72,11 @@ node server/main.js              # leerer Echtbetrieb (Daten in ./data)
 | Handy vergessen/leer               | *Anwesenheit* → Person → **Einchecken** (Fremd-Check-in)               |
 | „Verbindung?“-Status               | Gerät hat 90 s nichts gesendet — Akku/WLAN prüfen, Tracking läuft sonst weiter |
 | Marken-Code abgelehnt              | Gewollt (Einmal-Code). Person zeigt frischen Code (erneuert sich alle 60 s) |
+| Jemand kommt zu spät               | Person meldet selbst „Ich verspäte mich“ (mit ETA) — Badge erscheint bei Lead + Anwesenheit |
+| Meldung bleibt liegen              | Rote **SLA-Badge** (hoch 5 / mittel 15 / niedrig 45 min bis zur Reaktion) — zuweisen oder übernehmen |
+| Wichtige Ad-hoc-Entscheidung       | *Durchsagen* → Entscheidungslog-Zeile („📌 Notieren“) — landet im Feed und im Übergabeprotokoll |
+| Aufgabe hängt                      | Karte auf dem *Aufgaben*-Board öffnen → neu zuweisen; Blocker-Begründung steht direkt dran |
+| Schichtwechsel beim Lead           | Tablet *Mehr → Übergabe & Nachbericht* → durchgehen, drucken, fertig    |
 
 ## 4 · Wenn etwas klemmt (Unkaputtbarkeits-Rezepte)
 
@@ -90,6 +107,8 @@ einspielbar über *Voll-Import* (mit Vorschau + Vorab-Sicherung).
 
 ## 5 · Nach der Nacht
 
+0. **Phase auf „Abschluss“** stellen — Actors bekommen die Wrap-up-Karte
+   (Fundsachen, Fahrgruppen, Check-out), Abschluss-Aufgaben rücken nach vorn.
 1. Catering-Stationen: **Tagesabschluss** (Druckansicht für die Abrechnung).
 2. *Berichte*: Anwesenheit, Ø-Reaktionszeit, Verbrauch, Fahrgruppen-Quote —
    CSV-Exporte für die Nachbesprechung.

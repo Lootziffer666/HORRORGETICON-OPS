@@ -24,6 +24,8 @@ const TOPIC_BY_EVENT = {
   'catering.redeemed': ['catering'],
   'catering.station': ['catering'],
   'carpool.changed': ['carpool', 'chat'],
+  'task.changed': ['tasks', 'feed'],
+  'checklist.changed': ['checklists'],
   'module.changed': ['modules'],
   'feed.item': ['feed'],
   'settings.changed': ['settings'],

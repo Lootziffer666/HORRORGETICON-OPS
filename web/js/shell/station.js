@@ -8,7 +8,7 @@ import { guardedView, toast, sheet } from '../core/ui.js';
 import { hhmm } from '../core/fmt.js';
 import { logout, switchRole } from '../app.js';
 import { chatView } from '../views/chat.js';
-import { kpi } from '../views/shared.js';
+import { kpi, phaseBadge } from '../views/shared.js';
 
 let stationId = localStorage.getItem('hgo.station') || null;
 let scanned = null; // { check, qr? , personCode?, code? }
@@ -45,7 +45,9 @@ export function renderStation(root) {
       h('div', { class: 'col', style: { gap: 0 } },
         stationLabel,
         h('span', { class: 'sub' }, `Einlöse-Modus · ${store.me.person.name}`)),
-      liveClock, badge('ok', 'Online', { dot: true }),
+      liveClock,
+      (store.settings?.phase && store.settings.phase !== 'live') ? phaseBadge(store.settings.phase) : '',
+      badge('ok', 'Online', { dot: true }),
       h('div', { style: { flex: 1 } }),
       tabRow,
       h('span', { style: { cursor: 'pointer', color: 'var(--fg-muted)' }, title: 'Rolle wechseln', onclick: switchRole }, ic('user', 18)),

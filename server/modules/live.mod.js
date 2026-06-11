@@ -6,6 +6,13 @@ import { bad, notFound, now, iso, hhmm } from '../kernel/util.js';
 
 const STALE_MS = 90 * 1000; // ohne Lebenszeichen → „Verbindung verloren“
 
+// Selbstgesetzter Detail-Status (horrops_fullstack.md: ActorStatusPanel)
+export const ACTOR_STATI = ['anreise', 'da', 'maske', 'backstage', 'position', 'nicht_verfuegbar'];
+export const ACTOR_STATUS_LABEL = {
+  anreise: 'Auf Anreise', da: 'Da', maske: 'In der Maske',
+  backstage: 'Backstage', position: 'Auf Position', nicht_verfuegbar: 'Nicht verfügbar',
+};
+
 export function presenceStatus(db, personId) {
   const pr = db.get('presence', personId);
   if (!pr || pr.state !== 'in') return 'out';
@@ -45,6 +52,7 @@ export default {
         personId: pid, state: 'in', since: now(), lastSeen: now(),
         battery: ctx.body.battery ?? null, device: ctx.body.device || ctx.req.headers['user-agent']?.slice(0, 80) || '',
         positionConfirmedAt: null, unlinked: !!person.selfCreated,
+        actorStatus: 'da', lateInfo: null, // Check-in löst Anreise/Verspätung auf
       };
       db.put('presence', pid, pr);
       const pos = db.one('positions', (x) => x.assignedPersonId === pid);
@@ -59,7 +67,7 @@ export default {
       const pid = myId(ctx);
       const pr = db.get('presence', pid);
       if (!pr || pr.state !== 'in') bad('Nicht eingecheckt');
-      db.put('presence', pid, { ...pr, state: 'out', outAt: now(), lastSeen: now() });
+      db.put('presence', pid, { ...pr, state: 'out', outAt: now(), lastSeen: now(), actorStatus: null, lateInfo: null });
       // laufende Pause beenden
       for (const b of db.find('breaks', (b) => b.personId === pid && ['offen', 'genehmigt', 'läuft'].includes(b.status))) {
         db.patch('breaks', b.id, { status: 'beendet', endedAt: now() });
@@ -79,6 +87,40 @@ export default {
       db.put('presence', pid, { ...pr, lastSeen: now(), battery: ctx.body.battery ?? pr.battery });
       if (wasStale) bus.publish('presence.changed', { personId: pid, state: 'in' });
       return { ok: true, checkedIn: true, status: presenceStatus(db, pid) };
+    });
+
+    // Detail-Status selbst setzen (Bereit/Maske/Backstage/Auf Position …)
+    post('/api/live/status', async (ctx) => {
+      const status = ctx.body.status;
+      if (!ACTOR_STATI.includes(status)) bad(`Status muss einer von ${ACTOR_STATI.join(', ')} sein`);
+      const pid = ctx.person.id;
+      const pr = db.get('presence', pid) || { personId: pid, state: 'out', since: null, lastSeen: null };
+      if (pr.state !== 'in' && status !== 'anreise') bad('Erst einchecken — vor dem Check-in geht nur „Auf Anreise“');
+      const upd = { ...pr, actorStatus: status, lastSeen: pr.state === 'in' ? now() : pr.lastSeen };
+      if (status === 'position') upd.positionConfirmedAt = now();
+      if (status !== 'anreise') upd.lateInfo = null; // wer da ist, ist nicht mehr verspätet
+      db.put('presence', pid, upd);
+      bus.publish('presence.changed', { personId: pid });
+      return { ok: true, actorStatus: status };
+    });
+
+    // Verspätung melden — geht auch VOR dem Check-in (Anreise-Fall)
+    post('/api/live/late', async (ctx) => {
+      const etaMin = Number(ctx.body.etaMin);
+      if (!Number.isFinite(etaMin) || etaMin < 1 || etaMin > 600) bad('ETA in Minuten angeben (1–600)');
+      const pid = ctx.person.id;
+      const pr = db.get('presence', pid) || { personId: pid, state: 'out', since: null, lastSeen: null };
+      db.put('presence', pid, {
+        ...pr,
+        actorStatus: pr.state === 'in' ? pr.actorStatus : 'anreise',
+        lateInfo: { etaMin, reason: (ctx.body.reason || '').slice(0, 200), t: now() },
+      });
+      const pos = db.one('positions', (x) => x.assignedPersonId === pid);
+      const maze = pos ? db.get('mazes', pos.mazeId) : null;
+      feed(`⏰ ${ctx.person.name} verspätet sich ~${etaMin} min${ctx.body.reason ? ` — „${String(ctx.body.reason).slice(0, 80)}“` : ''}${pos ? ` (${maze?.name} · ${pos.code})` : ''}`,
+        { kind: 'anwesenheit', level: 'warn', mazeId: maze?.id || null });
+      bus.publish('presence.changed', { personId: pid });
+      return { ok: true };
     });
 
     post('/api/live/confirm-position', async (ctx) => {
@@ -104,6 +146,8 @@ export default {
           maze: maze?.name || null, mazeId: maze?.id || null,
           position: pos ? pos.code : null, positionName: pos?.name || null,
           status: presenceStatus(db, p.id),
+          actorStatus: pr?.actorStatus || null,
+          late: pr?.lateInfo || null,
           since: pr?.since || null, lastSeen: pr?.lastSeen || null, battery: pr?.battery ?? null,
         };
       });
@@ -169,10 +213,13 @@ export default {
         .sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }))
         .map((p) => {
           const person = p.assignedPersonId ? db.get('people', p.assignedPersonId) : null;
+          const pr = person ? db.get('presence', person.id) : null;
           return {
             id: p.id, code: p.code, name: p.name, desc: p.desc, room: p.room,
             person: person ? { id: person.id, name: person.name } : null,
             status: person ? presenceStatus(db, person.id) : 'leer',
+            actorStatus: pr?.actorStatus || null,
+            late: pr?.lateInfo || null,
           };
         });
       const incidents = db.find('incidents', (i) => i.mazeId === m.id && i.status !== 'erledigt');

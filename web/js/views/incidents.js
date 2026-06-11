@@ -58,7 +58,9 @@ export async function incidentsView({ onCleanup, refresh }) {
             rows.length === 0 ? h('tr', {}, h('td', { colspan: '8' }, h('div', { class: 'empty-hint' }, 'Nichts gefunden — gute Nachrichten.')))
               : rows.map((i) => h('tr', { style: i.prio === 'hoch' && i.status === 'offen' ? { background: 'var(--color-error-light)' } : null },
                 h('td', { class: 'num' }, i.time),
-                h('td', {}, badge(prioTone[i.prio], prioLabel[i.prio], { dot: true })),
+                h('td', {}, h('div', { class: 'row', style: { gap: '5px' } },
+                  badge(prioTone[i.prio], prioLabel[i.prio], { dot: true }),
+                  i.overdue && badge('err', `SLA +${Math.abs(i.slaLeftMin)} min`, { dot: true }))),
                 h('td', { class: 'b wrap', style: { minWidth: '230px' } }, i.text),
                 h('td', {}, kindLabel[i.kind] || i.kind),
                 h('td', {}, i.ort || '—'),

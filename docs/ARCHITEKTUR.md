@@ -142,11 +142,37 @@ Fallback-Karte („Modul deaktiviert“ / „Erneut versuchen“) — nie im wei
 Bildschirm. PWA: Manifest + Service Worker (App-Shell offline, API nie
 gecacht).
 
+## Abgleich mit horrops_fullstack.md (Must-Have-Spezifikation)
+
+Die Spezifikation `docs/horrops_fullstack.md` beschreibt Rollen-/Phasen-
+Must-Haves als Kotlin-State-Machines. Die State-Machine-Architektur wird
+bewusst **nicht** clientseitig nachgebaut — der Server ist die einzige
+Zustandsquelle, alle Geräte folgen via SSE. Übernommen sind die Konzepte:
+
+| Spez-Konzept                          | Umsetzung                                            |
+| ------------------------------------- | ---------------------------------------------------- |
+| EventLifecycle (DRAFT…POST_EVENT)      | `settings.phase` + `POST /api/settings/phase` (Modul settings), phasenbewusste UIs |
+| Task-/Dispatch-System                  | Modul `tasks` (Board, Inbox, Delegation, Blocker, Verlauf) |
+| ChecklistRunner („Sind wir bereit?“)   | Modul `checklists` (Vorlagen, Pflichtpunkte, Readiness) |
+| ActorStatusPanel (READY/IN_MASK/…)     | `presence.actorStatus` + Status-Chips, `POST /api/live/status` |
+| „Verspätung melden“                    | `POST /api/live/late` (auch vor Check-in), Feed + Badges |
+| Incident-SLA                           | Zielzeiten je Prio (settings.sla), `overdue`/`slaLeftMin` |
+| DecisionLog                            | `POST /api/feed/decision`, Filter `?kind=entscheidung` |
+| HandoverSummary (Supervisor)           | `GET /api/reports/handover?maze=` + druckbare Lead-Ansicht |
+| Cue-System / Broadcasts mit Pflicht-Ack | bereits vorhanden (Durchsagen + Vollbild-Alarm + Lesebestätigung) |
+| Supervisor ≙ Maze Lead · Leitstand ≙ Management | Rollenmodell unverändert |
+
+Bewusst offen (späterer Happen): Catering-Ausbau (auf Wunsch zurückgestellt),
+Master-Timeline-Versionierung, Dokumenten-Hub, Notification-Regeln/DND.
+
 ## Tests
 
-* `server/test/smoke.mjs` — 89 Checks gegen den echten Server: alle Workflows,
-  Doppel-Einlösung, Modul-Breaker/Hot-Reload, CSV-Roundtrip, Backup-Restore,
-  Rebuild, Start mit absichtlich zerstörtem Snapshot.
-* Browser-E2E (Playwright, im Repo-Verlauf dokumentiert): Login aller vier
-  Rollen, alle Leitstand-Views, Echtzeit-Alarm Lead→Actor→Leitstand,
-  Wallet-Code → Stations-Einlösung, Chat in Echtzeit — 40 Checks, 0 Fehler.
+* `server/test/smoke.mjs` — 125 Checks gegen den echten Server: alle
+  Workflows (inkl. Phasen, Aufgaben, Checklisten, Actor-Status, SLA,
+  Entscheidungslog, Übergabe), Doppel-Einlösung, Modul-Breaker/Hot-Reload,
+  CSV-Roundtrip, Backup-Restore, Rebuild, Start mit zerstörtem Snapshot.
+* `server/test/ui.e2e.mjs` — 47 Browser-Checks (Playwright, optional):
+  Login aller vier Rollen, alle Leitstand-Views, Phasen-Sheet,
+  Aufgaben-Board & Lead-Inbox, Rundgang-Abhaken bis „bereit ✓“,
+  Echtzeit-Alarm Lead→Actor→Leitstand, Wallet-Code → Stations-Einlösung,
+  Chat in Echtzeit — 0 JS-Fehler in allen Shells.

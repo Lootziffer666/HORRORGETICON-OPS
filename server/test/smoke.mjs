@@ -254,6 +254,97 @@ try {
   const wallet2 = (await api('GET', '/api/catering/wallet', { token: actor.token })).json;
   ok(wallet2.wallet, 'Modul funktioniert nach Reload');
 
+  section('Event-Phasen (Lifecycle)');
+  const set0 = (await api('GET', '/api/settings', { token: mgmt.token })).json;
+  ok(set0.phase === 'live', `Demo startet in Phase „live“ (${set0.phase})`);
+  const ph1 = (await api('POST', '/api/settings/phase', { token: mgmt.token, body: { phase: 'abschluss' } })).json;
+  ok(ph1.phase === 'abschluss', 'Phasenwechsel → abschluss');
+  const phFeed = (await api('GET', '/api/feed?limit=10', { token: mgmt.token })).json;
+  ok(phFeed.some((f) => f.text.includes('Event-Phase')), 'Phasenwechsel im Feed dokumentiert');
+  const phAnns = (await api('GET', '/api/announcements', { token: mgmt.token })).json;
+  ok(phAnns.some((a) => a.text.includes('Tagesabschluss')), 'Automatische Durchsage beim Abschluss');
+  const phForb = await api('POST', '/api/settings/phase', { token: actor.token, body: { phase: 'live' } });
+  ok(phForb.status === 403, 'Nur Management wechselt Phasen');
+  await api('POST', '/api/settings/phase', { token: mgmt.token, body: { phase: 'live' } });
+
+  section('Actor-Status & Verspätung');
+  const stOk = (await api('POST', '/api/live/status', { token: actor.token, body: { status: 'maske' } })).json;
+  ok(stOk.actorStatus === 'maske', 'Detail-Status setzen (Maske)');
+  const stPos = (await api('POST', '/api/live/status', { token: actor.token, body: { status: 'position' } })).json;
+  ok(stPos.actorStatus === 'position', 'Status „Auf Position“');
+  const late = (await api('POST', '/api/live/late', { token: actor.token, body: { etaMin: 15, reason: 'Stau' } })).json;
+  ok(late.ok, 'Verspätung melden');
+  const ovLate = (await api('GET', '/api/live/overview', { token: mgmt.token })).json;
+  const lateRow = ovLate.people.find((p) => p.id === actor.person.id);
+  ok(lateRow?.late?.etaMin === 15, 'Verspätung erscheint im Lagebild');
+  const lateFeed = (await api('GET', '/api/feed?limit=8', { token: mgmt.token })).json;
+  ok(lateFeed.some((f) => f.text.includes('verspätet sich')), 'Verspätung im Feed');
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'da' } });
+  const ovClear = (await api('GET', '/api/live/overview', { token: mgmt.token })).json;
+  ok(!ovClear.people.find((p) => p.id === actor.person.id)?.late, 'Status „da“ löscht die Verspätung');
+
+  section('Aufgaben & Dispatch');
+  const seedTasks = (await api('GET', '/api/tasks?status=aktiv', { token: mgmt.token })).json;
+  ok(seedTasks.length >= 6 && seedTasks.some((t) => t.overdue), `Demo-Aufgaben (${seedTasks.length} aktiv, überfällige markiert)`);
+  const newTask = (await api('POST', '/api/tasks', {
+    token: mgmt.token,
+    body: { title: 'Testaufgabe: Kabel sichern', mazeId: asylum.id, prio: 'hoch', critical: true, deadline: '23:30' },
+  })).json;
+  ok(newTask.id && newTask.status === 'offen', 'Aufgabe erstellt (kritisch, mit Frist)');
+  const disp = (await api('POST', `/api/tasks/${newTask.id}/assign`, { token: mgmt.token, body: { assigneeId: actor.person.id } })).json;
+  ok(disp.assigneeId === actor.person.id && disp.status === 'angenommen', 'Dispatch an Person');
+  const fremd = await api('PATCH', `/api/tasks/${newTask.id}`, { token: loginNew.token, body: { status: 'erledigt' } });
+  ok(fremd.status === 400, 'Fremde dürfen zugewiesene Aufgaben nicht patchen');
+  const blockNoNote = await api('PATCH', `/api/tasks/${newTask.id}`, { token: actor.token, body: { status: 'blockiert' } });
+  ok(blockNoNote.status === 400, 'Blockiert ohne Begründung wird abgelehnt');
+  const blockedT = (await api('PATCH', `/api/tasks/${newTask.id}`, { token: actor.token, body: { status: 'blockiert', note: 'Kein Werkzeug da' } })).json;
+  ok(blockedT.status === 'blockiert', 'Actor meldet Blocker mit Notiz');
+  const blockFeed = (await api('GET', '/api/feed?limit=6', { token: mgmt.token })).json;
+  ok(blockFeed.some((f) => f.text.includes('blockiert')), 'Kritischer Blocker im Feed');
+  const doneT = (await api('PATCH', `/api/tasks/${newTask.id}`, { token: actor.token, body: { status: 'erledigt' } })).json;
+  ok(doneT.status === 'erledigt', 'Aufgabe erledigt');
+  const confirmed = (await api('PATCH', `/api/tasks/${newTask.id}`, { token: lead.token, body: { status: 'bestätigt' } })).json;
+  ok(confirmed.status === 'bestätigt' && confirmed.history.length >= 4, 'Lead nimmt ab (Verlauf protokolliert)');
+  const board = (await api('GET', '/api/tasks/board', { token: mgmt.token })).json;
+  ok(board.aktiv >= 6 && board.jeMaze.length === 5, `Board-Aggregat (${board.aktiv} aktiv, ${board.kritischOffen} kritisch)`);
+
+  section('Checklisten & Rundgänge');
+  const ready0 = (await api('GET', '/api/checklists/readiness', { token: mgmt.token })).json;
+  const asylumReady = ready0.find((r) => r.maze === 'Asylum');
+  ok(asylumReady && !asylumReady.bereit && asylumReady.pflichtOffen === 1, 'Asylum nicht bereit (1 Pflichtpunkt offen — Demo)');
+  ok(ready0.filter((r) => r.bereit).length === 4, 'Übrige 4 Mazes bereit');
+  const cls = (await api('GET', `/api/checklists?maze=${asylum.id}`, { token: lead.token })).json;
+  const sicherheit = cls.find((c) => c.type === 'sicherheit');
+  const openItem = sicherheit.items.find((i) => i.mandatory && !i.done);
+  ok(!!openItem, `Offener Pflichtpunkt gefunden („${openItem?.text.slice(0, 30)}…“)`);
+  const toggled = (await api('POST', `/api/checklists/${sicherheit.id}/toggle`, { token: lead.token, body: { itemId: openItem.id } })).json;
+  ok(toggled.complete && toggled.mandatoryOpen === 0, 'Pflichtpunkt abgehakt → Rundgang abgeschlossen');
+  const clFeed = (await api('GET', '/api/feed?limit=6', { token: mgmt.token })).json;
+  ok(clFeed.some((f) => f.text.includes('Rundgang') && f.text.includes('abgeschlossen')), 'Abschluss im Feed');
+  const ready1 = (await api('GET', '/api/checklists/readiness', { token: mgmt.token })).json;
+  ok(ready1.every((r) => r.bereit), 'Readiness: alle Mazes bereit ✓');
+  const tpl = (await api('GET', '/api/checklists/templates', { token: lead.token })).json;
+  ok(tpl.length === 4 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (4 Typen)');
+  const newCl = (await api('POST', '/api/checklists', { token: mgmt.token, body: { type: 'preshow', mazeId: asylum.id } })).json;
+  ok(newCl.items.length >= 5 && newCl.mandatoryOpen > 0, 'Rundgang aus Vorlage angelegt');
+  const actorCl = await api('POST', `/api/checklists/${newCl.id}/toggle`, { token: actor.token, body: { itemId: 'i1' } });
+  ok(actorCl.status === 403, 'Actors haken keine Rundgänge ab (Lead/Mgmt)');
+
+  section('SLA, Entscheidungslog, Übergabe');
+  const incs = (await api('GET', '/api/incidents?status=offen', { token: mgmt.token })).json;
+  const hot = incs.find((i) => i.prio === 'hoch');
+  ok(hot && hot.overdue === true && hot.slaMin === 5, `Hoch-Prio offen seit >5 min → SLA überfällig (${hot?.slaLeftMin} min)`);
+  const dec = (await api('POST', '/api/feed/decision', { token: mgmt.token, body: { text: 'Welle 42 wird 5 min gestaut' } })).json;
+  ok(dec.kind === 'entscheidung', 'Entscheidung dokumentiert');
+  const decFeed = (await api('GET', '/api/feed?kind=entscheidung', { token: mgmt.token })).json;
+  ok(decFeed.length >= 2 && decFeed[0].text.includes('Welle 42'), `Entscheidungslog filterbar (${decFeed.length} Einträge)`);
+  const decForb = await api('POST', '/api/feed/decision', { token: actor.token, body: { text: 'x' } });
+  ok(decForb.status === 403, 'Entscheidungslog nur Lead/Management');
+  const handover = (await api('GET', `/api/reports/handover?maze=${asylum.id}`, { token: lead.token })).json;
+  ok(handover.maze === 'Asylum' && Array.isArray(handover.offeneAufgaben) && handover.checklisten.length >= 3,
+    `Übergabeprotokoll Asylum (${handover.offeneAufgaben.length} Aufgaben, ${handover.offeneVorfaelle.length} Vorfälle)`);
+  ok(handover.entscheidungen.length >= 1, 'Entscheidungen im Übergabeprotokoll');
+
   section('Berichte, Zeitplan, Einstellungen, Feed');
   const rep = (await api('GET', '/api/reports/overview', { token: mgmt.token })).json;
   ok(rep.anwesenheit.quote > 0 && rep.catering.einloesungen > 0, `Bericht: ${rep.anwesenheit.quote}% Anwesenheit`);

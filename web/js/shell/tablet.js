@@ -6,21 +6,35 @@ import { on, store } from '../core/store.js';
 import { guardedView } from '../core/ui.js';
 import { hhmm, minSince } from '../core/fmt.js';
 import { logout, switchRole } from '../app.js';
-import { mazeMapEl, mazeLegend, breakRequestCard, announceSheet, statusBadge, prioTone, prioLabel } from '../views/shared.js';
+import { mazeMapEl, mazeLegend, breakRequestCard, announceSheet, statusBadge, prioTone, prioLabel, phaseBadge, ACTOR_STATUS_META } from '../views/shared.js';
 import { chatView } from '../views/chat.js';
 import { incidentsView } from '../views/incidents.js';
 import { breaksView } from '../views/breaks.js';
-import { scheduleView } from '../views/schedule.js';
+import { leadTasksView, checklistRow, checklistSheet } from '../views/tasks.js';
 
 export function renderTablet(root) {
   const body = h('div', { style: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } });
   const liveClock = h('span', { class: 'live-dot' }, h('i'), `LIVE · ${hhmm(Date.now())}`);
   setInterval(() => { liveClock.lastChild.textContent = `LIVE · ${hhmm(Date.now())}`; }, 15000);
+  // Phase nur zeigen, wenn nicht „live“ (live steckt schon in der Live-Uhr)
+  const phaseEl = h('span');
+  const drawPhase = () => {
+    const phase = store.settings?.phase || 'vorbereitung';
+    mount(phaseEl, phase === 'live' ? '' : phaseBadge(phase));
+  };
+  drawPhase();
+  on('settings', drawPhase);
+
+  // „Meine“ Maze früh auflösen (für Aufgaben-Inbox & Durchsagen)
+  get('/api/mazes').then((mazes) => {
+    const mine = mazes.find((m) => m.lead === store.me.person.name);
+    if (mine) myMazeId = mine.id;
+  }).catch(() => { /* Lage-View löst nach */ });
 
   const badges = h('div', { class: 'row', style: { gap: '8px' } });
   const tabs = [
-    ['lage', 'Lage', 'users'], ['meldungen', 'Meldungen', 'alert'],
-    ['pausen', 'Pausen', 'pause'], ['chat', 'Chat', 'chat'], ['mehr', 'Mehr', 'list'],
+    ['lage', 'Lage', 'users'], ['aufgaben', 'Aufgaben', 'list'], ['meldungen', 'Meldungen', 'alert'],
+    ['pausen', 'Pausen', 'pause'], ['chat', 'Chat', 'chat'], ['mehr', 'Mehr', 'doc'],
   ];
   let active = 'lage';
   const tabRow = h('div', { class: 'row', style: { gap: '6px' } });
@@ -40,6 +54,7 @@ export function renderTablet(root) {
     const ctx = { params: new URLSearchParams(), onCleanup: (fn) => cleanups.push(fn), refresh: () => guard.refresh() };
     const views = {
       lage: () => leadLageView(ctx, badges),
+      aufgaben: () => leadTasksView(ctx, myMazeId),
       meldungen: () => incidentsView(ctx),
       pausen: () => breaksView(ctx),
       chat: () => chatView(ctx),
@@ -54,7 +69,7 @@ export function renderTablet(root) {
       h('div', { class: 'col', style: { gap: 0 } },
         h('span', { style: { fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '17px' } }, 'Maze-Leitung'),
         h('span', { class: 'sub' }, `Maze Lead · ${store.me.person.name}`)),
-      liveClock, badges,
+      liveClock, phaseEl, badges,
       h('div', { style: { flex: 1 } }),
       tabRow,
       h('button', { class: 'btn danger sm', style: { padding: '9px 14px' }, onclick: () => announceSheet({ mazeId: myMazeId, level: 'notfall' }) }, ic('mega', 15), 'Warnung an Maze'),
@@ -114,7 +129,9 @@ async function leadLageView({ onCleanup, refresh }, badgesEl) {
             h('span', { class: 'av' }, m.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()),
             h('div', { class: 'col grow', style: { gap: 0 } },
               h('span', { class: 'nm', style: { fontSize: '13px' } }, m.name),
-              h('span', { class: 'mt' }, `${m.position} · ${m.positionName || ''}`)),
+              h('span', { class: 'mt' }, [`${m.position} · ${m.positionName || ''}`,
+                m.actorStatus && m.actorStatus !== 'da' ? ACTOR_STATUS_META[m.actorStatus]?.label : null].filter(Boolean).join(' · '))),
+            m.late && badge('warn', `⏰ +${m.late.etaMin} min`),
             statusBadge(m.status)))))),
     h('div', { class: 'col', style: { gap: '12px', minHeight: 0 } },
       detail ? mazeMapEl(detail, { grow: true }) : h('div', { class: 'empty-hint card grow' }, 'Keine Maze zugeordnet'),
@@ -157,14 +174,35 @@ async function besetzen(pos, refresh) {
   });
 }
 
-// ── Mehr: Pausenplan + Durchsage + Abmelden ──
+// ── Mehr: Rundgänge + Übergabeprotokoll + Pausenplan ──
 async function leadMehrView({ onCleanup, refresh }) {
-  const plan = await get('/api/schedule/breakplan');
+  const [plan, checklists] = await Promise.all([
+    get('/api/schedule/breakplan'),
+    get(`/api/checklists${myMazeId ? `?maze=${myMazeId}` : ''}`),
+  ]);
+  onCleanup(on(['checklists'], refresh));
   return h('div', { class: 'col scroll-y', style: { gap: '14px', padding: '14px' } },
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
       h('button', { class: 'btn sm orange', onclick: () => announceSheet({ mazeId: myMazeId }) }, ic('mega', 14), 'Durchsage an meine Maze'),
       h('button', { class: 'btn sm quiet', onclick: switchRole }, ic('user', 14), 'Rolle wechseln'),
       h('button', { class: 'btn sm quiet', onclick: logout }, ic('out', 14), 'Abmelden')),
+
+    h('div', { class: 'panel' },
+      h('div', { class: 'panel-h' }, ic('check', 16, { color: 'var(--fg-muted)' }),
+        h('span', { class: 't' }, 'Rundgänge & Checklisten'),
+        checklists.some((c) => c.mandatoryOpen > 0)
+          ? badge('warn', `${checklists.reduce((s, c) => s + c.mandatoryOpen, 0)} Pflicht offen`)
+          : badge('ok', 'bereit ✓', { dot: true })),
+      h('div', { class: 'panel-b', style: { gap: '12px' } },
+        checklists.length === 0 ? h('span', { class: 'sub' }, 'Keine Rundgänge für deine Maze — das Management legt sie unter Aufgaben → Checklisten an.')
+          : checklists.map((c) => checklistRow(c, refresh)))),
+
+    h('div', { class: 'panel' },
+      h('div', { class: 'panel-h' }, ic('doc', 16, { color: 'var(--fg-muted)' }),
+        h('span', { class: 't' }, 'Übergabe & Nachbericht'),
+        h('button', { class: 'btn sm quiet right', onclick: () => window.print() }, ic('doc', 13), 'Drucken')),
+      h('div', { class: 'panel-b' }, await handoverBlock())),
+
     h('div', { class: 'panel' },
       h('div', { class: 'panel-h' }, ic('pause', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Pausenplan-Vorschlag'), h('span', { class: 'sub right' }, plan.hinweis)),
       h('div', { class: 'panel-b', style: { gap: '12px' } },
@@ -172,4 +210,20 @@ async function leadMehrView({ onCleanup, refresh }) {
           h('span', { class: 'overline' }, m.maze),
           h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
             m.slots.map((s) => h('span', { class: 'chip', title: s.person }, h('b', {}, s.position), ` ${s.von}–${s.bis}`))))))));
+}
+
+async function handoverBlock() {
+  const d = await get(`/api/reports/handover${myMazeId ? `?maze=${myMazeId}` : ''}`);
+  const sec = (label, items, render) => h('div', { class: 'col', style: { gap: '3px' } },
+    h('span', { class: 'overline' }, `${label} (${items.length})`),
+    items.length === 0 ? h('span', { class: 'sub' }, '— nichts offen')
+      : items.slice(0, 8).map((x) => h('span', { style: { fontSize: '13px' } }, render(x))));
+  return h('div', { class: 'col', style: { gap: '12px' } },
+    h('span', { class: 'sub' }, `Stand ${d.stand}${d.maze ? ` · ${d.maze}` : ' · gesamtes Gelände'} — alles, was die nächste Schicht wissen muss:`),
+    sec('Offene Aufgaben', d.offeneAufgaben, (t) => `${t.critical ? '⚠️ ' : '• '}${t.title}${t.status === 'blockiert' ? ` — BLOCKIERT: „${t.note || ''}“` : ''}${t.assignee ? ` (→ ${t.assignee})` : ''}`),
+    sec('Offene Vorfälle', d.offeneVorfaelle, (i) => `• ${i.time} ${i.text}${i.ort ? ` (${i.ort})` : ''}`),
+    sec('Checklisten', d.checklisten, (c) => `• ${c.title}: ${c.done}/${c.total}${c.pflichtOffen ? ` — ${c.pflichtOffen} Pflicht offen!` : ' ✓'}`),
+    sec('Laufende Pausen', d.laufendePausen, (b) => `• ${b.person} (seit ${b.seitMin} min)`),
+    sec('Unbesetzte Positionen', d.unbesetztePositionen, (p) => `• ${p.code} ${p.name ? `„${p.name}“` : ''}${p.maze ? ` · ${p.maze}` : ''}`),
+    sec('Letzte Entscheidungen', d.entscheidungen, (e) => `${e.time} · ${e.text.replace('📌 Entscheidung: ', '')}`));
 }
