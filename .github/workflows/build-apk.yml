@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -20,12 +20,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > catchit-android/local.properties
-
-      # Remove daemon JVM properties so Gradle uses the system JDK (JDK 21 from setup-java).
-      # The file points to foojay.io for JVM downloads which adds latency and a network dependency.
-      - name: Remove gradle-daemon-jvm.properties
-        run: rm -f catchit-android/gradle/gradle-daemon-jvm.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > kmp/local.properties
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -33,7 +28,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('catchit-android/**/*.gradle.kts', 'catchit-android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('kmp/**/*.gradle.kts', 'kmp/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -43,17 +38,11 @@ jobs:
           echo "CI_VERSION_NAME=0.1.0-ci.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA}" >> "$GITHUB_ENV"
 
       - name: Build Debug APK
-        env:
-          AVV_API_KEY: ${{ secrets.AVV_API_KEY }}
-          DB_API_KEY: ${{ secrets.DB_API_KEY }}
-          DB_CLIENT_ID: ${{ secrets.DB_CLIENT_ID }}
-          DB_TIMETABLES_API_KEY: ${{ secrets.DB_TIMETABLES_API_KEY }}
-          DB_TIMETABLES_CLIENT_ID: ${{ secrets.DB_TIMETABLES_CLIENT_ID }}
-        run: cd catchit-android && ./gradlew assembleDebug --no-daemon --stacktrace
+        run: cd kmp && ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: CatchIt-debug-apk-${{ github.event_name }}-${{ github.run_number }}-${{ github.sha }}
-          path: catchit-android/app/build/outputs/apk/debug/app-debug.apk
+          name: debug-apk-${{ github.run_number }}-${{ github.sha }}
+          path: kmp/composeApp/build/outputs/apk/debug/
           retention-days: 30
