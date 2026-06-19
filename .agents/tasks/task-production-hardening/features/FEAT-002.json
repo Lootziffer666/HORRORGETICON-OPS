@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Resilience hardening: Improve graceful shutdown (drain SSE connections), add connection limits for SSE, and harden the server against event-night failure modes (too many SSE clients, stale connections, memory pressure).",
+  "status": "in_progress",
+  "steps": [
+    "In server/kernel/bus.js, add a MAX_CLIENTS constant (default 200 - more than enough for even a large crew). When a new SSE client tries to attach and the limit is reached, respond with 503 and a clear message. This prevents memory exhaustion from leaked connections.",
+    "In server/kernel/bus.js attach(), add a per-person connection limit (max 3 concurrent SSE connections per personId). If exceeded, drop the oldest connection for that person before attaching the new one. This handles the common case of a crew member refreshing their browser tab repeatedly.",
+    "In server/main.js shutdown handler, improve graceful shutdown: (1) stop accepting new connections immediately, (2) close all SSE connections cleanly with a 'shutdown' event so clients know to reconnect, (3) wait up to 3 seconds for in-flight requests to complete, (4) then snapshot and exit. Replace the current simplistic approach.",
+    "In server/kernel/bus.js, add a stale connection reaper: every 60 seconds, check all SSE clients. If a client's underlying socket is destroyed or has not had a successful write in 90 seconds (beyond the 25s ping interval), drop it. This cleans up zombie connections from crashed devices.",
+    "Add test case to smoke.mjs: connect 5 SSE streams as the same user, verify only 3 remain active (oldest 2 are dropped). Verify the /api/health endpoint reports the correct online count."
+  ],
+  "acceptance_criteria": [
+    "npm test passes including new SSE connection limit tests",
+    "Server gracefully shuts down SSE connections on SIGTERM instead of abruptly killing them",
+    "Max 3 concurrent SSE connections per user are enforced",
+    "Global SSE client cap of 200 is enforced with 503 response"
+  ],
+  "verification": [
+    "Run npm test and confirm all checks pass"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

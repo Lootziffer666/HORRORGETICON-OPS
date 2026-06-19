@@ -437,6 +437,35 @@ try {
   const first429 = rlResults.indexOf(429);
   ok(first429 >= 1, 'Nicht sofort beim ersten Versuch gedrosselt');
 
+  section('SSE-Verbindungslimits & Resilience');
+  // Per-Person-Limit: max 3 gleichzeitige SSE-Verbindungen pro Person.
+  // Wir brauchen ein frisches Token (Ratelimiter hat Login-IP gesperrt).
+  // Nutze lead-Token (aus frueherem Login).
+  const sseConns = [];
+  for (let i = 0; i < 5; i++) {
+    const ctrl = new AbortController();
+    const r = fetch(BASE + '/api/stream?token=' + lead.token, {
+      headers: { Authorization: `Bearer ${lead.token}` },
+      signal: ctrl.signal,
+    });
+    sseConns.push({ promise: r, ctrl });
+    // Kurz warten, damit die Verbindung registriert wird
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  // Warte kurz, damit alle Verbindungen auf dem Server registriert sind
+  await new Promise((r) => setTimeout(r, 300));
+  const healthSSE = (await api('GET', '/api/health', { token: lead.token })).json;
+  ok(healthSSE.online <= 3, `Per-Person-Limit: max 3 SSE-Verbindungen aktiv (online: ${healthSSE.online})`);
+  // Aufraeumen: alle SSE-Verbindungen schliessen
+  for (const c of sseConns) { c.ctrl.abort(); }
+  await new Promise((r) => setTimeout(r, 200));
+
+  // Globales Limit: 503 bei Ueberlast (Indirekt pruefen -- zu viele Verbindungen oeffnen wir nicht,
+  // aber wir pruefen, dass das attach im Bus korrekt arbeitet).
+  // Stattdessen pruefen wir, dass /api/health online=0 nach Aufraemen meldet.
+  const healthAfter = (await api('GET', '/api/health', { token: lead.token })).json;
+  ok(healthAfter.online === 0, `SSE-Verbindungen nach Abort sauber aufgeraeumt (online: ${healthAfter.online})`);
+
   section('Crash-Sicherheit: kaputter Snapshot → Wiederherstellung');
   server.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 1200));

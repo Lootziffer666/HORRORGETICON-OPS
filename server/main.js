@@ -61,7 +61,8 @@ const REQUEST_TIMEOUT_MS = 30_000;
 
 // SSE-Stream (Kernel-eigen, läuft auch wenn Module straucheln)
 router.add('GET', '/api/stream', async (ctx) => {
-  bus.attach(ctx.req, ctx.res, ctx);
+  const cid = bus.attach(ctx.req, ctx.res, ctx);
+  if (cid === null) return Symbol.for('handled'); // 503 wurde direkt geschrieben
   return Symbol.for('handled'); // Verbindung bleibt offen
 }, { module: '_kernel' });
 
@@ -163,13 +164,25 @@ const tick = setInterval(() => {
 }, 30000);
 tick.unref?.();
 
-// Geordneter Stopp: letzter Snapshot, dann Ende
+// Stale-Connection-Reaper starten (raeumt Zombie-SSE-Verbindungen auf)
+bus.startReaper();
+
+// Geordneter Stopp: SSE drainieren, Snapshot, sauber beenden.
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
-    console.log(`\n[shutdown] ${sig} — letzter Snapshot …`);
+    console.log(`\n[shutdown] ${sig} — Verbindungen schliessen …`);
+    // 1. Reaper stoppen
+    bus.stopReaper();
+    // 2. Alle SSE-Clients sauber benachrichtigen und trennen
+    bus.drainAll();
+    // 3. Snapshot sichern
     try { db.snapshot('shutdown'); } catch (e) { console.error(e.message); }
+    // 4. Server schliessen und beenden
     server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 1500).unref();
+    // Sicherheitsnetz: nach 3s trotzdem beenden (z.B. bei haengenden Sockets)
+    setTimeout(() => process.exit(0), 3000).unref();
+    // Offene idle-Verbindungen (keep-alive) sofort zerstoeren, damit server.close() zeitnah feuert.
+    server.closeAllConnections?.();
   });
 }
 process.on('uncaughtException', (e) => {
