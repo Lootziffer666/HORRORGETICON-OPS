@@ -106,10 +106,7 @@ function wireGlobalEvents() {
       notify('📢 Durchsage', evt.data.text);
     }
   });
-  on('online', (ok) => {
-    if (!ok) toast('Verbindung zum Leitstand verloren — versuche erneut …', 'err');
-    else toast('Wieder verbunden', 'ok');
-  });
+
   on('settings.changed', async () => {
     store.settings = await get('/api/settings').catch(() => store.settings);
     emit('shell.refresh');

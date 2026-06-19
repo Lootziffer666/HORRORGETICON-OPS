@@ -1,0 +1,20 @@
+{
+  "id": "FEAT-003",
+  "type": "fix",
+  "description": "Address review findings: fix spurious double-load on first connect and remove duplicate offline/online toast handler.",
+  "status": "in_progress",
+  "steps": [
+    "1. In web/js/core/store.js, change the SSE 'open' handler to only emit('reconnected') when store.online was previously false (actual reconnect, not first connect).",
+    "2. In web/js/app.js wireGlobalEvents(), remove the on('online', ...) handler that shows toasts for connect/disconnect since the persistent banner now handles this."
+  ],
+  "acceptance_criteria": [
+    "store.js only emits 'reconnected' on actual reconnects (not on first SSE open)",
+    "app.js wireGlobalEvents() no longer has on('online', ...) toast handler",
+    "All 182 tests still pass"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all tests pass"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}
