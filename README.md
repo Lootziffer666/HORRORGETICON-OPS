@@ -31,8 +31,8 @@ Ohne `--demo` startet die Plattform leer für den Echtbetrieb.
 | `LK-0427` | `1234` | Scare Actor → Phone-App (A3 „Zellenblock“)     |
 | `SB-0901` | `1234` | Catering → Stations-Modus (Marken entwerten)   |
 
-Tests: `npm test` (125 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
-optionaler Browser-E2E: `server/test/ui.e2e.mjs` (47 Checks, benötigt Playwright).
+Tests: `npm test` (241 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
+optionaler Browser-E2E: `server/test/ui.e2e.mjs` (66 Checks, benötigt Playwright).
 
 ---
 
@@ -68,7 +68,14 @@ Drag & Drop inkl. Konflikt-Erkennung · Pausen-Freigaben mit
 Springer-Vorschlag · Meldungs-Workflow mit Ø-Reaktionszeit und
 **SLA-Überfällig-Badges** · Durchsagen mit Lesebestätigungs-Quote +
 **Entscheidungslog** · Chat · Catering-Kontingente & Stationen ·
-Fahrgruppen-Matching · Zeitplan mit gestaffeltem Pausenplan · Berichte.
+Fahrgruppen-Matching · Zeitplan mit gestaffeltem Pausenplan · Berichte ·
+**Kids Day Leitstand** (Familientag-Modus mit Intensitaetssteuerung pro Maze,
+Altersgruppen, Sicherheits-Checklisten) · **Ablaufplan / Master-Timeline**
+(Programmboecke mit Verzoegerungspropagation, Versionierung, Freeze fuer
+Live-Betrieb) · **Dokumenten-Hub** (zentrale Event-Dokumente — Briefings,
+Lageplaene, Notfallplaene — mit Kategorien, Pinning, Sichtbarkeitssteuerung) ·
+**Event-Timeline-Export** (chronologischer Gesamtexport aller Events als JSON,
+druckfertiges HTML oder CSV fuer Nachbesprechung).
 
 **Scare Actor (Phone)**
 Check-in/-out · phasenbewusste Schichtkarte (Aufbau / Live mit Fortschritt /
@@ -78,7 +85,9 @@ Schnellaktionen (Pause anfragen, Getränk anfordern, Warnung melden mit
 automatischer Position, Maze-Karte mit Live-Pins & Nachbarn) · **Meine
 Aufgaben** mit Abhaken & Blocker-Meldung · Vollbild-Alarm mit
 Lesebestätigung · Chat · Marken-Wallet · Profil mit Verknüpfung &
-Fahrgemeinschaft.
+Fahrgemeinschaft · **DND-Modus** (Nicht-stoeren waehrend Scare-Position —
+filtert unwichtige Benachrichtigungen, deaktiviert sich automatisch bei
+Pausen/Vorfaellen).
 
 **Maze Lead (Tablet)**
 Split-Ansicht Team + Karte (inkl. Detail-Status & Verspätungs-Badges) ·
@@ -136,10 +145,11 @@ Tageszähler · Tagesabschluss mit Druckansicht.
 ```
 server/            Node.js ≥ 18, null Abhängigkeiten
   kernel/          Modul-Kernel, DB (Journal/Snapshot/Backups), SSE-Bus, Auth, CSV, Geo
-  modules/         18 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
+  modules/         23 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
   seed/            Demo-Szenario „Horrornacht“ (Datenstand der Mockups)
-  test/smoke.mjs   125 API-End-to-End-Checks (npm test)
-  test/ui.e2e.mjs  47 Browser-E2E-Checks (optional, Playwright)
+  test/smoke.mjs   241 API-End-to-End-Checks (npm test)
+  test/ui.e2e.mjs  66 Browser-E2E-Checks (optional, Playwright)
+  test/load.mjs    Lasttest (150+ SSE-Verbindungen + parallele API-Calls)
 web/               PWA — Hearthwork-Design aus dem Prototyp, kein Build-Schritt
   js/core/         DOM/Store/SSE/API/QR-Encoder (eigener, verifizierter Encoder)
   js/shell/        Desktop- / Tablet- / Station- / Phone-Shell + Login
@@ -162,6 +172,7 @@ Daten liegen unter `data/` (git-ignoriert): `state.json` + `journal.jsonl` +
 node server/main.js                # Produktivstart (leer)
 node server/main.js --demo        # mit Demo-Szenario
 npm test                           # API-Testlauf
+node server/test/load.mjs             # Lasttest (150+ SSE-Verbindungen + parallele API-Calls)
 ```
 
 Erste Schritte im Echtbetrieb: als Management anmelden → *Personen* anlegen
