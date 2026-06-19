@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Master-Timeline-Versionierung: Server-Modul + Frontend-View + Shell-Integration + Tests",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create server/modules/timeline-versions.mod.js following the pattern from server/modules/tasks.mod.js. Import utilities from ../kernel/util.js (bad, need, notFound, id, now, hhmm). Export default module object with name 'timeline-versions', title, version, description, and routes function.",
     "Implement timeline block CRUD: GET /api/timeline (returns all blocks sorted by start), POST /api/timeline (create block with title, start HH:MM, end HH:MM, type string), PATCH /api/timeline/:id (update block fields). Blocks have: id, title, start, end, type, order, createdAt, updatedBy. Only 'management' role can write, 'lead' + 'management' can read.",
@@ -35,5 +35,5 @@
     "Verify web/sw.js SHELL array contains '/js/views/timeline.js'"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 216 tests pass (190 existing + 26 new). Module auto-discovered from server/modules/ directory. Collections timeline_blocks, timeline_versions, and timeline_state are auto-created by the db layer on first use. The freeze toggle uses POST endpoint that toggles state rather than separate freeze/unfreeze endpoints."
 }
