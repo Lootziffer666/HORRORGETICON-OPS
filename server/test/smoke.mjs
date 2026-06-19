@@ -408,6 +408,89 @@ try {
   const kdBadMazeId = await api('PATCH', '/api/kidsday/mazes/nonexistent-maze-xyz', { token: mgmt.token, body: { intensity: 'leicht' } });
   ok(kdBadMazeId.status === 404, 'Nicht existentes Maze liefert 404');
 
+  section('DND-Modus (Nicht stören)');
+  // Actor-Status steht auf 'da' (aus vorheriger Sektion), Phase ist 'live'
+  // 1. Initialer Status: DND inaktiv
+  const dndInit = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndInit.active === false && dndInit.manual === false && dndInit.auto === false, 'DND initial inaktiv (kein manuell, kein auto)');
+
+  // 2. Manuell aktivieren
+  const dndEn = (await api('POST', '/api/dnd/enable', { token: actor.token })).json;
+  ok(dndEn.ok === true && dndEn.active === true, 'DND manuell aktiviert');
+
+  // 3. Status zeigt manuell aktiv
+  const dndManual = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndManual.active === true && dndManual.manual === true, 'GET /api/dnd/status zeigt manual=true');
+
+  // 4. Manuell deaktivieren
+  const dndDis = (await api('POST', '/api/dnd/disable', { token: actor.token })).json;
+  ok(dndDis.ok === true, 'DND manuell deaktiviert');
+
+  // 5. Status zeigt inaktiv
+  const dndOff = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndOff.active === false && dndOff.manual === false, 'GET /api/dnd/status zeigt inaktiv nach disable');
+
+  // 6. Auto-DND: Status auf 'position' setzen (Phase ist 'live')
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'position' } });
+  const dndAuto = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndAuto.active === true && dndAuto.auto === true && dndAuto.manual === false, 'Auto-DND aktiv bei live+position');
+
+  // 7. Auto-DND endet wenn Status sich aendert
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'backstage' } });
+  const dndNoAuto = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndNoAuto.active === false && dndNoAuto.auto === false, 'Auto-DND endet bei Status-Wechsel weg von position');
+
+  // 8. Management kann fremden DND-Status abfragen
+  const dndMgmt = (await api('GET', `/api/dnd/status/${actor.person.id}`, { token: mgmt.token })).json;
+  ok(dndMgmt && typeof dndMgmt.active === 'boolean', 'Management kann DND-Status anderer Personen abfragen');
+
+  // 9. Ohne Token kein Zugriff auf DND-Endpoints
+  const dndNoAuth = await api('GET', '/api/dnd/status');
+  ok(dndNoAuth.status === 401, 'DND-Endpoint ohne Token liefert 401');
+
+  // 10. SSE-Filterung: info-Durchsage wird bei DND blockiert, notfall kommt durch
+  // DND aktivieren fuer Actor
+  await api('POST', '/api/dnd/enable', { token: actor.token });
+  // SSE-Stream oeffnen und Daten sammeln
+  const sseCtrl = new AbortController();
+  let sseBuf = '';
+  const ssePromise = (async () => {
+    try {
+      const sseRes = await fetch(BASE + '/api/stream?token=' + actor.token, { signal: sseCtrl.signal });
+      const reader = sseRes.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        sseBuf += decoder.decode(value, { stream: true });
+      }
+    } catch { /* AbortError expected */ }
+  })();
+  await new Promise((r) => setTimeout(r, 300));
+  // Info-Durchsage senden (announce.new sollte NICHT beim DND-Actor ankommen)
+  await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'DND-Test-Info', level: 'info' } });
+  await new Promise((r) => setTimeout(r, 400));
+  // Notfall-Durchsage senden (announce.new MUSS durchkommen)
+  await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'DND-Test-Notfall', level: 'notfall' } });
+  await new Promise((r) => setTimeout(r, 400));
+  // Stream schliessen und pruefen
+  sseCtrl.abort();
+  await ssePromise;
+  // DND filtert announce.new und alarm Events (nicht feed.item).
+  // Pruefen: announce.new mit notfall kommt durch, announce.new mit info nicht.
+  // Parse SSE data lines to check event types
+  const sseLines = sseBuf.split('\n').filter((l) => l.startsWith('data: '));
+  const sseEvents = sseLines.map((l) => { try { return JSON.parse(l.slice(6)); } catch { return null; } }).filter(Boolean);
+  const announceEvents = sseEvents.filter((e) => e.type === 'announce.new');
+  const hasNotfallAnnounce = announceEvents.some((e) => e.data?.text?.includes('DND-Test-Notfall'));
+  const hasInfoAnnounce = announceEvents.some((e) => e.data?.text?.includes('DND-Test-Info'));
+  ok(hasNotfallAnnounce && !hasInfoAnnounce,
+    'SSE-Filterung: announce.new mit Notfall kommt durch, Info-announce.new wird bei DND blockiert');
+
+  // Cleanup: DND wieder deaktivieren, Status zuruecksetzen
+  await api('POST', '/api/dnd/disable', { token: actor.token });
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'da' } });
+
   section('Input-Validierung');
   // Chat: Nachricht > 2000 Zeichen wird abgeschnitten
   const longMsg = 'A'.repeat(3000);
@@ -541,6 +624,51 @@ try {
   const health = (await api('GET', '/api/health', { token: relog.token })).json;
   ok(health.db.counts.people >= 50, `Datenbestand wiederhergestellt (${health.db.counts.people} Personen)`);
   ok(health.db.bootReport.some((l) => l.includes('unbrauchbar')), 'Boot-Report dokumentiert die Reparatur');
+
+  section('Offline-Robustheit: Service Worker & Retry-Logik');
+
+  // (a) SW-Cache enthaelt alle JS-Dateien
+  const swSrc = fs.readFileSync(path.join(ROOT, 'web/sw.js'), 'utf8');
+  const expectedJS = [
+    '/js/app.js',
+    '/js/core/api.js', '/js/core/dom.js', '/js/core/fmt.js',
+    '/js/core/offline-banner.js', '/js/core/qr.js', '/js/core/store.js', '/js/core/ui.js',
+    '/js/shell/desktop.js', '/js/shell/login.js', '/js/shell/phone.js',
+    '/js/shell/station.js', '/js/shell/tablet.js',
+    '/js/views/alarm.js', '/js/views/announce.js', '/js/views/attendance.js',
+    '/js/views/backups.js', '/js/views/breaks.js', '/js/views/carpool.js',
+    '/js/views/catering_mgmt.js', '/js/views/chat.js', '/js/views/dashboard.js',
+    '/js/views/dbadmin.js', '/js/views/incidents.js', '/js/views/kidsday.js',
+    '/js/views/livemap.js', '/js/views/mazes.js', '/js/views/modules.js',
+    '/js/views/people.js', '/js/views/profile.js', '/js/views/reports.js',
+    '/js/views/schedule.js', '/js/views/settings.js', '/js/views/shared.js',
+    '/js/views/tasks.js', '/js/views/wallet.js',
+  ];
+  const missingFromCache = expectedJS.filter((f) => !swSrc.includes(`'${f}'`));
+  ok(missingFromCache.length === 0, `SW-Cache enthaelt alle ${expectedJS.length} JS-Dateien${missingFromCache.length ? ' (fehlend: ' + missingFromCache.join(', ') + ')' : ''}`);
+
+  // (b) Cache-Version ist v2 (nicht mehr v1)
+  ok(swSrc.includes("'hgo-shell-v2'"), 'SW-Cache-Version ist hgo-shell-v2');
+  ok(!swSrc.includes("'hgo-shell-v1'"), 'Alte Cache-Version v1 nicht mehr vorhanden');
+
+  // (c) offline-banner.js existiert und exportiert initOfflineBanner
+  const bannerPath = path.join(ROOT, 'web/js/core/offline-banner.js');
+  ok(fs.existsSync(bannerPath), 'offline-banner.js Modul existiert');
+  const bannerSrc = fs.readFileSync(bannerPath, 'utf8');
+  ok(bannerSrc.includes('initOfflineBanner'), 'offline-banner.js exportiert initOfflineBanner');
+
+  // (d) store.js enthaelt emit("reconnected") Logik
+  const storeSrc = fs.readFileSync(path.join(ROOT, 'web/js/core/store.js'), 'utf8');
+  ok(storeSrc.includes("emit('reconnected')") || storeSrc.includes('emit("reconnected")'), 'store.js emittiert reconnected-Event nach Reconnect');
+
+  // (e) api.js enthaelt Retry-Logik (setTimeout mit 2000ms)
+  const apiSrc = fs.readFileSync(path.join(ROOT, 'web/js/core/api.js'), 'utf8');
+  ok(apiSrc.includes('2000') || apiSrc.includes('2e3'), 'api.js enthaelt 2s-Retry-Delay');
+
+  // (f) Regressions-Test: API-Aufrufe funktionieren weiterhin korrekt (Retry bricht nichts)
+  const regHealth = await api('GET', '/api/health', { token: relog.token });
+  ok(regHealth.status === 200, 'API-Aufrufe funktionieren weiterhin nach Retry-Logik-Integration');
+
 } catch (e) {
   failed++;
   console.error('\n💥 Testlauf abgebrochen:', e);
