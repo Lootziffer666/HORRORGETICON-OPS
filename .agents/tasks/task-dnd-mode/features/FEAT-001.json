@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Implement DND (Do Not Disturb) mode as a new server module with API endpoints, server-side SSE filtering in the bus, and auto-DND logic for actors in phase 'live' with status 'position'. Management override ensures 'notfall' level always gets through.",
+  "status": "in_progress",
+  "steps": [
+    "Create server/modules/dnd.mod.js following the module pattern from server/modules/live.mod.js and server/modules/announce.mod.js. The module should:",
+    "  - Store DND state in a 'dnd' collection in the DB with records keyed by personId: { personId, manual: bool, since: timestamp }",
+    "  - POST /api/dnd/enable: lets the current user (actor, lead, springer) manually enable DND. Stores { personId, manual: true, since: now() }. Publishes 'dnd.changed' via bus.",
+    "  - POST /api/dnd/disable: lets the current user disable DND. Removes the record. Publishes 'dnd.changed'.",
+    "  - GET /api/dnd/status: returns { active: bool, manual: bool, auto: bool } for the current user. Auto-DND is computed: phase === 'live' AND presence.actorStatus === 'position'.",
+    "  - GET /api/dnd/status/:personId: management/lead can query any person's DND status.",
+    "  - Export a helper function isDND(db, personId) that returns true if the person has manual DND active OR auto-DND conditions are met (phase 'live' + actorStatus 'position'). This function is imported by the bus filtering logic.",
+    "Modify server/kernel/bus.js to support a DND filter layer:",
+    "  - Add a setDndCheck(fn) method on Bus that accepts a function (personId) => boolean. This is called by the dnd module at init time.",
+    "  - In the publish() method, after the audience filter passes, apply an additional DND check: if the event type is 'announce.new' and the announcement data.level is NOT 'notfall', skip delivery to clients where dndCheck(client.person.id) returns true. Also skip 'alarm' events unless data.level === 'notfall'. All other event types pass through normally (presence, chat, tasks, settings etc are never DND-filtered).",
+    "  - DND never blocks events of type 'alarm' where data.level === 'notfall' -- these always go through (management Notfall override).",
+    "Register the dnd module in the kernel's module loading (it auto-discovers *.mod.js files in server/modules/, so just creating the file is enough).",
+    "Add 'dnd.changed' to the TOPIC_BY_EVENT map in web/js/core/store.js so the frontend can react to DND state changes.",
+    "Wire the dnd module's isDND helper into the bus at server startup. The module's routes() function receives { db, bus } -- use bus.setDndCheck((pid) => isDND(db, pid)) inside the routes() init."
+  ],
+  "acceptance_criteria": [
+    "POST /api/dnd/enable sets DND for the calling user and returns { ok: true, active: true }",
+    "POST /api/dnd/disable removes DND for the calling user and returns { ok: true, active: false }",
+    "GET /api/dnd/status returns correct active/manual/auto state",
+    "When DND is active for an actor, bus.publish of 'announce.new' with level 'info' or 'wichtig' does NOT reach that actor's SSE stream",
+    "When DND is active, bus.publish of 'announce.new' with level 'notfall' STILL reaches the actor (management override)",
+    "Auto-DND triggers when phase is 'live' and actorStatus is 'position' (without manual toggle)",
+    "Other event types (presence.changed, chat.message, task.changed, etc.) are never filtered by DND",
+    "npm test passes with new DND tests added"
+  ],
+  "verification": [
+    "Run `npm test` and confirm all tests pass including new DND section"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

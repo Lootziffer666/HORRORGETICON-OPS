@@ -15,7 +15,11 @@ export class Bus {
     this.clients = new Map(); // clientId -> { res, session, person, since, lastWrite }
     this.listeners = [];      // serverinterne Abonnenten
     this._reaper = null;
+    this.dndCheck = null;     // (personId) => boolean — gesetzt vom DND-Modul
   }
+
+  /** Registriert die DND-Pruef-Funktion (aufgerufen vom dnd.mod.js). */
+  setDndCheck(fn) { this.dndCheck = fn; }
 
   // serverintern
   on(fn) { this.listeners.push(fn); }
@@ -30,8 +34,14 @@ export class Bus {
     const evt = { id: id('e'), type, t: now(), data };
     for (const fn of this.listeners) { try { fn(evt); } catch { /* Zuhoerer duerfen den Bus nie reissen */ } }
     const payload = `id: ${evt.id}\nevent: ops\ndata: ${JSON.stringify(evt)}\n\n`;
+    const dndTypes = new Set(['announce.new', 'alarm']);
     for (const [cid, c] of this.clients) {
       if (opt.audience && !safeAudience(opt.audience, c)) continue;
+      // DND-Filter: nur fuer announce.new und alarm, und nur wenn NICHT notfall
+      if (dndTypes.has(type) && data?.level !== 'notfall' && this.dndCheck) {
+        const pid = c.person?.id;
+        if (pid && safeDndCheck(this.dndCheck, pid)) continue;
+      }
       try { c.res.write(payload); c.lastWrite = Date.now(); } catch { this.drop(cid); }
     }
     return evt;
@@ -130,4 +140,8 @@ export class Bus {
 
 function safeAudience(fn, client) {
   try { return !!fn(client); } catch { return false; }
+}
+
+function safeDndCheck(fn, personId) {
+  try { return !!fn(personId); } catch { return false; }
 }

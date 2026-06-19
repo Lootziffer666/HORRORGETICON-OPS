@@ -17,6 +17,7 @@ const TOPIC_BY_EVENT = {
   'presence.changed': ['live'],
   'break.changed': ['breaks', 'live'],
   'incident.changed': ['incidents', 'live', 'feed'],
+  'dnd.changed': ['dnd', 'live'],
   'announce.new': ['announce', 'feed'],
   'announce.read': ['announce'],
   'chat.message': ['chat'],
