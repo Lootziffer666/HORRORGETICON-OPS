@@ -10,7 +10,7 @@ import { DB } from './kernel/db.js';
 import { Bus } from './kernel/bus.js';
 import { Auth } from './kernel/auth.js';
 import { Kernel } from './kernel/kernel.js';
-import { Router, RateLimiter, readBody, sendJson, sendText, serveStatic } from './kernel/http.js';
+import { Router, RateLimiter, readBody, jsonDepth, sendJson, sendText, serveStatic } from './kernel/http.js';
 import { ApiError } from './kernel/util.js';
 import { seedDemo, ensureBaseline } from './seed/seed.js';
 
@@ -82,13 +82,10 @@ const server = http.createServer(async (req, res) => {
 
       // ─── Rate-Limiting ───────────────────────────────────────────────────────
       const isAuthRoute = url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register';
-      if (isAuthRoute) {
-        if (!authLimiter.allow(ip)) {
-          throw new ApiError(429, 'Zu viele Anmeldeversuche — bitte in einigen Minuten erneut versuchen');
+      if (!isAuthRoute) {
+        if (!apiLimiter.allow(ip)) {
+          throw new ApiError(429, 'Anfragelimit erreicht — bitte kurz warten');
         }
-      }
-      if (!apiLimiter.allow(ip)) {
-        throw new ApiError(429, 'Anfragelimit erreicht — bitte kurz warten');
       }
 
       const m = router.match(req.method, url.pathname);
@@ -106,10 +103,23 @@ const server = http.createServer(async (req, res) => {
         else {
           const ct = (req.headers['content-type'] || '').split(';')[0].trim();
           if (ct === 'application/json' || ct === '') {
-            try { body = JSON.parse(raw.toString('utf8')); }
+            const str = raw.toString('utf8');
+            if (jsonDepth(str) > 50) throw new ApiError(400, 'JSON-Verschachtelung zu tief (max. 50 Ebenen)');
+            try { body = JSON.parse(str); }
             catch { throw new ApiError(400, 'Ungültiges JSON im Anfrage-Body'); }
           } else if (ct.startsWith('text/')) { body = { text: raw.toString('utf8') }; }
           else { body = { raw }; }
+        }
+      }
+
+      // ─── Auth Rate-Limiting (nach Body-Parsing, Key: code+IP) ────────────────
+      // Auf Event-LAN hinter NAT teilen sich alle Geraete eine IP.
+      // Key auf code+IP verhindert, dass ein fehlerhafter Code alle anderen aussperrt.
+      if (isAuthRoute) {
+        const code = (body && body.code) ? String(body.code).slice(0, 20) : '';
+        const authKey = `${code}:${ip}`;
+        if (!authLimiter.allow(authKey)) {
+          throw new ApiError(429, 'Zu viele Anmeldeversuche — bitte in einigen Minuten erneut versuchen');
         }
       }
 
@@ -173,11 +183,14 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     console.log(`\n[shutdown] ${sig} — Verbindungen schliessen …`);
     // 1. Reaper stoppen
     bus.stopReaper();
-    // 2. Alle SSE-Clients sauber benachrichtigen und trennen
+    // 2. Rate-Limiter Cleanup-Intervalle stoppen
+    authLimiter.destroy();
+    apiLimiter.destroy();
+    // 3. Alle SSE-Clients sauber benachrichtigen und trennen
     bus.drainAll();
-    // 3. Snapshot sichern
+    // 4. Snapshot sichern
     try { db.snapshot('shutdown'); } catch (e) { console.error(e.message); }
-    // 4. Server schliessen und beenden
+    // 5. Server schliessen und beenden
     server.close(() => process.exit(0));
     // Sicherheitsnetz: nach 3s trotzdem beenden (z.B. bei haengenden Sockets)
     setTimeout(() => process.exit(0), 3000).unref();

@@ -124,7 +124,7 @@ export async function parseBody(req) {
 }
 
 /** Lightweight nesting depth check without recursive parsing. */
-function jsonDepth(str) {
+export function jsonDepth(str) {
   let max = 0, depth = 0;
   for (let i = 0; i < str.length; i++) {
     const ch = str.charCodeAt(i);
