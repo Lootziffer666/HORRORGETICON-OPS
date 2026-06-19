@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Extend the Playwright E2E tests in server/test/ui.e2e.mjs with at least 15 new browser checks covering the new features: Kids Day view, Timeline/Ablaufplan view, Dokumenten-Hub view, and DND mode toggle.",
+  "status": "in_progress",
+  "steps": [
+    "In server/test/ui.e2e.mjs, after the existing management navigation tests and before the Actor section (section 2), add new test checks for the new views. The desktop shell routes are: 'kidsday' (Kids Day), 'timeline' (Ablaufplan), 'dokumente' (Dokumente). Navigate using `mg.evaluate((x) => { location.hash = '#/' + x; }, viewName)` followed by waitForTimeout(700) as done in existing tests.",
+    "Add Kids Day view tests (at least 3 checks): navigate to #/kidsday, verify the view renders (no .mod-off), check for KPI elements or configuration panels (look for text like 'Kids Day', 'Altersgruppen', intensity controls), verify maze configuration cards are shown.",
+    "Add Timeline/Ablaufplan view tests (at least 4 checks): navigate to #/timeline, verify blocks panel renders with the 6 seeded blocks, check for freeze/unfreeze button presence, test creating a delay (POST /api/timeline/delay via the UI or API call and verify UI updates), check version history panel existence.",
+    "Add Dokumenten-Hub view tests (at least 4 checks): navigate to #/dokumente, verify the 3 seeded documents appear, check category filter chips are present, verify pinned documents are shown first, test opening a document (click on one and check sheet/overlay appears with content).",
+    "Add DND mode tests (at least 4 checks): On the actor page (ctx2/ac), navigate to the profile section, find the DND toggle/panel, enable DND via the UI or API (POST /api/dnd/enable with actor token), verify badge 'DND' appears in the phone shell header, disable DND and verify badge disappears.",
+    "Take screenshots for each new view section (continue numbering from existing shots, e.g. 17-mgmt-kidsday.png, 18-mgmt-timeline.png, 19-mgmt-dokumente.png, 20-actor-dnd.png)."
+  ],
+  "acceptance_criteria": [
+    "server/test/ui.e2e.mjs contains at least 15 new ok() assertions beyond the original 47",
+    "The new tests cover all 4 feature areas: Kids Day, Timeline, Dokumente, DND",
+    "The test file is syntactically valid JavaScript (no syntax errors when parsed)",
+    "npm test still passes (the E2E tests are separate from npm test, but smoke tests must not break)"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all tests pass",
+    "Run `node --check server/test/ui.e2e.mjs` to verify no syntax errors"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
