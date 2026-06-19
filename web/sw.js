@@ -31,6 +31,7 @@ const SHELL = [
   '/js/views/chat.js',
   '/js/views/dashboard.js',
   '/js/views/dbadmin.js',
+  '/js/views/documents.js',
   '/js/views/incidents.js',
   '/js/views/kidsday.js',
   '/js/views/livemap.js',

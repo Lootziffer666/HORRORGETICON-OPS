@@ -727,6 +727,75 @@ try {
   const leadWrite = await api('POST', '/api/timeline', { token: lead.token, body: { title: 'X', start: '20:00', end: '21:00' } });
   ok(leadWrite.status === 403, 'Lead darf nicht schreiben (403)');
 
+  section('Dokumenten-Hub');
+
+  // Management erstellt ein Dokument
+  const doc1 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Sicherheitsbriefing', content: '# Wichtige Infos\n\nAlle Notausgaenge pruefen.', category: 'briefing', visibility: 'alle' } })).json;
+  ok(doc1?.id && doc1.title === 'Sicherheitsbriefing', 'Dokument erstellt');
+  ok(doc1.category === 'briefing' && doc1.visibility === 'alle', 'Dokument hat Kategorie + Sichtbarkeit');
+
+  // Zweites Dokument (management-only)
+  const doc2 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Internes Protokoll', content: 'Nur fuer Management.', category: 'sonstiges', visibility: 'management' } })).json;
+  ok(doc2?.id && doc2.visibility === 'management', 'Management-only Dokument erstellt');
+
+  // Drittes Dokument (lead visibility)
+  const doc3 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Lead-Info', content: 'Fuer Leads.', category: 'lageplan', visibility: 'lead' } })).json;
+  ok(doc3?.id && doc3.visibility === 'lead', 'Lead-Dokument erstellt');
+
+  // Lese alle Dokumente als Management (sieht alles)
+  const allDocs = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(Array.isArray(allDocs) && allDocs.length >= 3, `Management sieht alle Dokumente (${allDocs?.length})`);
+
+  // Actor sieht nur Dokumente mit visibility=alle
+  const actorDocs = (await api('GET', '/api/documents', { token: actor.token })).json;
+  ok(actorDocs.every((d) => d.visibility === 'alle'), 'Actor sieht nur Dokumente mit Sichtbarkeit alle');
+  ok(!actorDocs.find((d) => d.id === doc2.id), 'Actor sieht management-only Dokument nicht');
+  ok(!actorDocs.find((d) => d.id === doc3.id), 'Actor sieht lead-Dokument nicht');
+
+  // Lead sieht alle + lead, aber nicht management-only
+  const leadDocs = (await api('GET', '/api/documents', { token: lead.token })).json;
+  ok(leadDocs.find((d) => d.id === doc3.id), 'Lead sieht lead-Dokument');
+  ok(!leadDocs.find((d) => d.id === doc2.id), 'Lead sieht management-only Dokument nicht');
+
+  // Kategorie-Filter
+  const briefings = (await api('GET', '/api/documents?category=briefing', { token: mgmt.token })).json;
+  ok(briefings.every((d) => d.category === 'briefing'), 'Kategoriefilter funktioniert');
+  ok(briefings.find((d) => d.id === doc1.id), 'Briefing-Dokument in Kategorie-Ergebnis');
+
+  // Update Dokument
+  const updDoc = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { title: 'Sicherheitsbriefing v2', content: 'Aktualisiert.' } })).json;
+  ok(updDoc.title === 'Sicherheitsbriefing v2', 'Dokument aktualisiert');
+
+  // Pin/Unpin
+  const pinRes = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { pinned: true } })).json;
+  ok(pinRes.pinned === true, 'Dokument angepinnt');
+
+  // Pinned documents appear first
+  const withPin = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(withPin[0].id === doc1.id && withPin[0].pinned === true, 'Angepinnte Dokumente stehen oben');
+
+  // Unpin
+  const unpinRes = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { pinned: false } })).json;
+  ok(unpinRes.pinned === false, 'Dokument losgeloest');
+
+  // Delete Dokument
+  const delDoc = await api('DELETE', `/api/documents/${doc1.id}`, { token: mgmt.token });
+  ok(delDoc.status === 200 && delDoc.json?.ok, 'Dokument geloescht');
+  const afterDel = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(!afterDel.find((d) => d.id === doc1.id), 'Geloeschtes Dokument nicht mehr in Liste');
+
+  // Rollenrestriktionen: Actor kann nicht erstellen
+  const actorCreate = await api('POST', '/api/documents', { token: actor.token, body: { title: 'Test', content: 'x', category: 'sonstiges', visibility: 'alle' } });
+  ok(actorCreate.status === 403, 'Actor kann kein Dokument erstellen (403)');
+
+  // Actor kann nicht bearbeiten
+  const actorEdit = await api('PATCH', `/api/documents/${doc2.id}`, { token: actor.token, body: { title: 'Hack' } });
+  ok(actorEdit.status === 403, 'Actor kann kein Dokument bearbeiten (403)');
+
+  // Actor kann nicht loeschen
+  const actorDel = await api('DELETE', `/api/documents/${doc2.id}`, { token: actor.token });
+  ok(actorDel.status === 403, 'Actor kann kein Dokument loeschen (403)');
+
   section('Offline-Robustheit: Service Worker & Retry-Logik');
 
   // (a) SW-Cache enthaelt alle JS-Dateien
@@ -740,7 +809,7 @@ try {
     '/js/views/alarm.js', '/js/views/announce.js', '/js/views/attendance.js',
     '/js/views/backups.js', '/js/views/breaks.js', '/js/views/carpool.js',
     '/js/views/catering_mgmt.js', '/js/views/chat.js', '/js/views/dashboard.js',
-    '/js/views/dbadmin.js', '/js/views/incidents.js', '/js/views/kidsday.js',
+    '/js/views/dbadmin.js', '/js/views/documents.js', '/js/views/incidents.js', '/js/views/kidsday.js',
     '/js/views/livemap.js', '/js/views/mazes.js', '/js/views/modules.js',
     '/js/views/people.js', '/js/views/profile.js', '/js/views/reports.js',
     '/js/views/schedule.js', '/js/views/settings.js', '/js/views/shared.js',

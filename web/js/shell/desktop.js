@@ -23,6 +23,7 @@ import { timelineView } from '../views/timeline.js';
 import { cateringMgmtView } from '../views/catering_mgmt.js';
 import { carpoolView } from '../views/carpool.js';
 import { scheduleView } from '../views/schedule.js';
+import { documentsView } from '../views/documents.js';
 import { reportsView } from '../views/reports.js';
 import { dbadminView } from '../views/dbadmin.js';
 import { modulesView } from '../views/modules.js';
@@ -48,6 +49,7 @@ const NAV = [
   { id: 'fahrgruppen', label: 'Fahrgruppen', icon: 'car', view: carpoolView },
   { id: 'zeitplan', label: 'Zeitplan', icon: 'cal', view: scheduleView },
   { id: 'berichte', label: 'Berichte', icon: 'chart', view: reportsView },
+  { id: 'dokumente', label: 'Dokumente', icon: 'doc', view: documentsView },
   { sec: 'System' },
   { id: 'db', label: 'Datenbank', icon: 'db', view: dbadminView },
   { id: 'module', label: 'Module', icon: 'puzzle', view: modulesView },
