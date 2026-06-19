@@ -59,7 +59,7 @@ export function connectSSE() {
   const token = getToken();
   if (!token) return;
   es = new EventSource(`/api/stream?token=${encodeURIComponent(token)}`);
-  es.addEventListener('open', () => { retryMs = 1500; setOnline(true); });
+  es.addEventListener('open', () => { retryMs = 1500; setOnline(true); emit('reconnected'); });
   es.addEventListener('error', () => {
     setOnline(false);
     es.close(); es = null;

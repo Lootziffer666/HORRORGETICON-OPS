@@ -5,6 +5,7 @@ import { h, mount } from './core/dom.js';
 import { get, post, getToken, setToken } from './core/api.js';
 import { store, on, connectSSE, emit, notify } from './core/store.js';
 import { toast } from './core/ui.js';
+import { initOfflineBanner } from './core/offline-banner.js';
 import { renderLogin, renderRoleSelect } from './shell/login.js';
 import { renderDesktop } from './shell/desktop.js';
 import { renderTablet } from './shell/tablet.js';
@@ -63,6 +64,7 @@ export function switchRole() { showRoleSelect(); }
 
 function enterApp() {
   connectSSE();
+  initOfflineBanner();
   mountAlarmLayer();
   startHeartbeat();
   wireGlobalEvents();
