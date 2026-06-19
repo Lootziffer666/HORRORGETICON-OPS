@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Input validation audit and hardening: Add comprehensive input validation to critical endpoints that lack it, protecting against malformed data that could corrupt the journal or crash modules during event night.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In server/modules/people.mod.js (or equivalent endpoint handling person creation/updates): Add validation for name (max 100 chars, non-empty), roles (must be valid ROLES array values), code (max 20 chars, alphanumeric+dash pattern), ort (max 100 chars), notizen (max 2000 chars). Any field exceeding limits should be truncated or rejected with 400.",
     "In server/modules/chat.mod.js: Add validation for message text (max 2000 chars, must be non-empty after trim). Channel names (max 50 chars). This prevents someone pasting enormous text blobs that bloat the journal.",
@@ -22,5 +22,5 @@
     "Run npm test and confirm all checks pass"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All modules now have comprehensive input validation. The project prefers truncation over rejection for text content (confirmed by existing patterns in incidents.mod.js and announce.mod.js). Key changes: (1) chat text limit raised to 2000 (from 1000) matching the acceptance criteria; (2) announce text limit raised to 1000 (from 500) for longer messages; (3) tasks title limit changed from 160 to 200 per spec; (4) JSON depth check uses a lightweight character-scan approach that correctly skips string literals containing braces; (5) people.mod.js now imports ROLES from auth.js for validation; (6) The actor token in smoke.mjs had an existing break from demo seed data, so the break note test uses the catering token instead; (7) breaks.mod.js durationMin is now clamped between 1-120 to prevent abuse. Total tests: 164 (12 new)."
 }
