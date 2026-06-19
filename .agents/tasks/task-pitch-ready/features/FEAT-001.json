@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Expand the demo seed (server/seed/seed.js) with pitch-relevant data: 2-3 documents for Dokumenten-Hub (Sicherheits-Briefing, Lageplan, Notfallplan) and 5-6 timeline blocks (Einlass, Briefing, Show-Start, Pause, Show-Teil-2, Abschluss). Also create the load test script (server/test/load.mjs) that simulates 150+ concurrent SSE connections with parallel heartbeats, incidents, and break requests, reporting response times and connection stability.",
+  "status": "in_progress",
+  "steps": [
+    "In server/seed/seed.js, add seed documents BEFORE the final `db.patch('settings', 'main', { phase: 'live' })` line. Create 3 documents using db.put('documents', ...) with categories 'briefing', 'lageplan', 'notfall', visibility 'alle', pinned: true. Titles: 'Sicherheits-Briefing Horrornacht', 'Lageplan Gelaende & Notausgaenge', 'Notfallplan & Sanitaeter-Standorte'. Include realistic content text for each (2-3 paragraphs).",
+    "In server/seed/seed.js, add 6 timeline blocks using db.put('timeline_blocks', ...) with realistic event schedule: 'Einlass' (17:30-18:00), 'Crew-Briefing' (16:00-16:45), 'Show-Start Welle 1' (18:00-18:30), 'Pause / Catering-Rotation' (21:00-21:30), 'Show Teil 2 — Intensivphase' (21:30-23:30), 'Abschluss & Abbau' (23:30-01:00). Each block needs: id (use id('tb') pattern from kernel/util.js), title, start (HH:MM), end (HH:MM), type: 'block', order (0-5), createdAt: now(), updatedBy: 'Daniel Roth'.",
+    "Create server/test/load.mjs: a zero-dependency Node.js script that (1) starts a demo server on port 18793 with temp data dir, (2) logs in as management to get a token, (3) opens 150 concurrent SSE connections to /api/stream using native http module (NOT fetch, since fetch can't stream SSE easily), (4) runs 200 parallel API calls (mix of POST /api/live/heartbeat, POST /api/incidents, POST /api/breaks) with various actor tokens, (5) measures p50/p95/p99 response times, (6) checks how many SSE connections survived, (7) prints a summary table. Note: the bus.js MAX_CLIENTS is 200, and MAX_PER_PERSON is 3 - so the load test needs to login as multiple different people (use the 30 filler actors from seed). The script should handle the SSE 503 gracefully when hitting the limit."
+  ],
+  "acceptance_criteria": [
+    "Running `node server/main.js --demo` and then GET /api/documents with a valid token returns at least 3 seeded documents with categories briefing, lageplan, notfall",
+    "Running `node server/main.js --demo` and then GET /api/timeline with a valid token returns 6 seeded timeline blocks covering the full event schedule",
+    "server/test/load.mjs exists, runs without errors, spawns 150+ connections, and prints a summary with response time percentiles and connection stability stats",
+    "npm test still passes (241+ checks)"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all tests pass",
+    "Run `node server/test/load.mjs` and confirm it completes with a summary output"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

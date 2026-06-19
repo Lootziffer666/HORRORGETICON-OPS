@@ -529,6 +529,130 @@ export function seedDemo(db) {
     completedAt: rel(22),
   });
 
+  // ───────── Dokumenten-Hub (Pitch-Daten) ─────────
+  db.put('documents', 'doc_briefing', {
+    id: 'doc_briefing',
+    title: 'Sicherheits-Briefing Horrornacht',
+    category: 'briefing',
+    visibility: 'alle',
+    pinned: true,
+    content: 'Willkommen zur Horrornacht! Dieses Briefing fasst die wichtigsten Sicherheitsregeln zusammen.\n\n' +
+      '1. Niemals einen Gast physisch beruehren oder festhalten. Scare-Kontakt erfolgt ausschliesslich ueber Geraeusche, Licht und Bewegung. ' +
+      'Bei Panik-Reaktionen eines Gastes sofort Abstand halten und per Funk melden.\n\n' +
+      '2. Alle Notausgaenge muessen jederzeit frei zugaenglich bleiben. Requisiten duerfen niemals Fluchtwege blockieren. ' +
+      'Jeder Actor kennt den naechsten Notausgang seiner Position auswendig.\n\n' +
+      '3. Das Codewort \"LICHT AN\" beendet sofort jede Scare-Aktion im Abschnitt. ' +
+      'Bei Verwendung: Beleuchtung einschalten, Gaeste beruhigen, auf Anweisung der Leitung warten.',
+    createdAt: now(),
+    createdBy: 'Daniel Roth',
+    updatedAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('documents', 'doc_lageplan', {
+    id: 'doc_lageplan',
+    title: 'Lageplan Gelaende & Notausgaenge',
+    category: 'lageplan',
+    visibility: 'alle',
+    pinned: true,
+    content: 'Der Lageplan zeigt alle fuenf Mazes, Service-Zonen und Notausgaenge des Gelaendes.\n\n' +
+      'Notausgaenge befinden sich an folgenden Punkten: Asylum Suedseite (hinter Keller), Kettensaege Westtor, ' +
+      'Katakomben Treppenaufgang Nord, Puppenhaus Hinterausgang, Seuchendorf Hauptgasse Ende. ' +
+      'Alle Ausgaenge sind mit gruenen LED-Streifen am Boden markiert und per Panikschloss zu oeffnen.\n\n' +
+      'Service-Zonen: Einlass/Kassen im Nordosten, Backstage/Crew mittig-ost, Catering suedost, ' +
+      'Security-Punkt Sued im Suedosten. Die Erweiterungsflaeche West ist 2027 reserviert.',
+    createdAt: now(),
+    createdBy: 'Daniel Roth',
+    updatedAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('documents', 'doc_notfall', {
+    id: 'doc_notfall',
+    title: 'Notfallplan & Sanitaeter-Standorte',
+    category: 'notfall',
+    visibility: 'alle',
+    pinned: true,
+    content: 'Im Notfall gilt die Meldekette: Actor -> Lead -> Leitstand -> Rettungsdienst.\n\n' +
+      'Sanitaeter-Standorte: Station Alpha (Einlass-Bereich, permanent besetzt), ' +
+      'Station Bravo (Backstage, ab 18:00 besetzt), Mobile Einheit Charlie (auf dem Gelaende patroullierend). ' +
+      'Defibrillatoren haengen an: Einlass Haupttor, Backstage Eingang, Security-Punkt Sued.\n\n' +
+      'Bei Evakuierung: Codewort \"VORHANG\" ueber Funk. Alle Scare-Aktionen stoppen sofort, ' +
+      'Beleuchtung auf Maximum, Actors leiten Gaeste zum naechsten Notausgang. ' +
+      'Sammelplatz ist der Parkplatz Nord (beleuchtet, gekennzeichnet).',
+    createdAt: now(),
+    createdBy: 'Daniel Roth',
+    updatedAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  // ───────── Timeline-Bloecke (Pitch-Daten) ─────────
+  db.put('timeline_blocks', 'tb_briefing', {
+    id: 'tb_briefing',
+    title: 'Crew-Briefing',
+    start: '16:00',
+    end: '16:45',
+    type: 'block',
+    order: 0,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('timeline_blocks', 'tb_einlass', {
+    id: 'tb_einlass',
+    title: 'Einlass & Aufwaermphase',
+    start: '17:30',
+    end: '18:00',
+    type: 'block',
+    order: 1,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('timeline_blocks', 'tb_show1', {
+    id: 'tb_show1',
+    title: 'Show-Start — Welle 1',
+    start: '18:00',
+    end: '21:00',
+    type: 'block',
+    order: 2,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('timeline_blocks', 'tb_pause', {
+    id: 'tb_pause',
+    title: 'Pause / Catering-Rotation',
+    start: '21:00',
+    end: '21:30',
+    type: 'block',
+    order: 3,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('timeline_blocks', 'tb_show2', {
+    id: 'tb_show2',
+    title: 'Show Teil 2 — Intensivphase',
+    start: '21:30',
+    end: '23:30',
+    type: 'block',
+    order: 4,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
+  db.put('timeline_blocks', 'tb_abschluss', {
+    id: 'tb_abschluss',
+    title: 'Abschluss & Abbau',
+    start: '23:30',
+    end: '01:00',
+    type: 'block',
+    order: 5,
+    createdAt: now(),
+    updatedBy: 'Daniel Roth',
+  });
+
   // Demo-Szenario = laufende Horrornacht
   db.patch('settings', 'main', { phase: 'live' });
 
