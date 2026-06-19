@@ -32,7 +32,7 @@ Ohne `--demo` startet die Plattform leer für den Echtbetrieb.
 | `SB-0901` | `1234` | Catering → Stations-Modus (Marken entwerten)   |
 
 Tests: `npm test` (241 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
-optionaler Browser-E2E: `server/test/ui.e2e.mjs` (66 Checks, benötigt Playwright).
+optionaler Browser-E2E: `server/test/ui.e2e.mjs` (47 Checks, benötigt Playwright).
 
 ---
 
@@ -148,7 +148,7 @@ server/            Node.js ≥ 18, null Abhängigkeiten
   modules/         23 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
   seed/            Demo-Szenario „Horrornacht“ (Datenstand der Mockups)
   test/smoke.mjs   241 API-End-to-End-Checks (npm test)
-  test/ui.e2e.mjs  66 Browser-E2E-Checks (optional, Playwright)
+  test/ui.e2e.mjs  47 Browser-E2E-Checks (optional, Playwright)
   test/load.mjs    Lasttest (150+ SSE-Verbindungen + parallele API-Calls)
 web/               PWA — Hearthwork-Design aus dem Prototyp, kein Build-Schritt
   js/core/         DOM/Store/SSE/API/QR-Encoder (eigener, verifizierter Encoder)

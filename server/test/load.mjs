@@ -234,8 +234,13 @@ async function main() {
     console.log(`║ p99 Latency:           ${p99.toFixed(1).padStart(8)} ms          ║`);
     console.log('╚══════════════════════════════════════════════════╝');
 
-    if (sseConnected < 100) {
-      console.warn(`\n⚠ Only ${sseConnected} SSE connections established (target: 150+). Check MAX_CLIENTS setting.`);
+    // ─── Failure threshold ───
+    const apiCalls = API_CALLS;
+    const apiErrors = errors.length;
+    if (sseConnected < 100 || apiErrors > apiCalls * 0.5) {
+      process.exitCode = 1;
+      if (sseConnected < 100) console.warn(`\n⚠ Only ${sseConnected} SSE connections established (target: 150+). Check MAX_CLIENTS setting.`);
+      if (apiErrors > apiCalls * 0.5) console.warn(`\n⚠ API error rate too high: ${apiErrors}/${apiCalls} (>${Math.round(apiCalls * 0.5)} threshold).`);
     }
 
     // ─── Cleanup SSE ───
