@@ -408,6 +408,69 @@ try {
   const kdBadMazeId = await api('PATCH', '/api/kidsday/mazes/nonexistent-maze-xyz', { token: mgmt.token, body: { intensity: 'leicht' } });
   ok(kdBadMazeId.status === 404, 'Nicht existentes Maze liefert 404');
 
+  section('Input-Validierung');
+  // Chat: Nachricht > 2000 Zeichen wird abgeschnitten
+  const longMsg = 'A'.repeat(3000);
+  const chatLong = (await api('POST', '/api/chat/ch_crew/messages', { token: actor.token, body: { text: longMsg } })).json;
+  ok(chatLong.text.length === 2000, `Chat-Nachricht auf 2000 Zeichen gekuerzt (${chatLong.text.length})`);
+
+  // Chat: leere Nachricht wird abgelehnt
+  const chatEmpty = await api('POST', '/api/chat/ch_crew/messages', { token: actor.token, body: { text: '   ' } });
+  ok(chatEmpty.status === 400, 'Leere Chat-Nachricht wird abgewiesen (400)');
+
+  // Tasks: Titel > 200 Zeichen wird abgeschnitten
+  const longTitle = 'T'.repeat(300);
+  const taskLong = (await api('POST', '/api/tasks', { token: mgmt.token, body: { title: longTitle } })).json;
+  ok(taskLong.title.length === 200, `Aufgaben-Titel auf 200 Zeichen gekuerzt (${taskLong.title.length})`);
+
+  // Tasks: Deadline-Format wird validiert
+  const taskBadDl = await api('POST', '/api/tasks', { token: mgmt.token, body: { title: 'Test', deadline: 'morgen' } });
+  ok(taskBadDl.status === 400 && taskBadDl.json.error.includes('HH:MM'), 'Ungueltige Deadline wird abgewiesen (400)');
+
+  // People: Ungueltige Rolle wird abgewiesen
+  const badRolePerson = await api('POST', '/api/people', { token: mgmt.token, body: { name: 'Tester', roles: ['admin', 'root'] } });
+  ok(badRolePerson.status === 400, 'Ungueltige Rollen werden abgewiesen (400)');
+
+  // People: Name wird auf 100 Zeichen gekuerzt
+  const longNamePerson = (await api('POST', '/api/people', { token: mgmt.token, body: { name: 'N'.repeat(150) } })).json;
+  ok(longNamePerson.name.length === 100, `Personenname auf 100 Zeichen gekuerzt (${longNamePerson.name.length})`);
+
+  // People: Code-Pattern wird validiert
+  const badCodePerson = await api('POST', '/api/people', { token: mgmt.token, body: { name: 'Tester2', code: 'AB CD!!' } });
+  ok(badCodePerson.status === 400, 'Ungueltiger Personal-Code wird abgewiesen (400)');
+
+  // Announcements: Text > 1000 Zeichen wird abgeschnitten
+  const longAnn = (await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'X'.repeat(1500), level: 'info' } })).json;
+  ok(longAnn.text.length === 1000, `Durchsagen-Text auf 1000 Zeichen gekuerzt (${longAnn.text.length})`);
+
+  // Announcements: Ungueltiges Level wird abgewiesen
+  const badLevelAnn = await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'Test', level: 'panik' } });
+  ok(badLevelAnn.status === 400, 'Ungueltige Durchsage-Stufe wird abgewiesen (400)');
+
+  // Announcements: Ungueltiger Scope-Typ wird abgewiesen
+  const badScopeAnn = await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'Test', scope: { type: 'galaxy' } } });
+  ok(badScopeAnn.status === 400, 'Ungueltiger Scope-Typ wird abgewiesen (400)');
+
+  // JSON Depth Bomb: tief verschachteltes JSON wird abgewiesen
+  let deepJson = '{"a":';
+  for (let i = 0; i < 55; i++) deepJson += '{"b":';
+  deepJson += '1';
+  for (let i = 0; i < 55; i++) deepJson += '}';
+  deepJson += '}';
+  const deepRes = await fetch(BASE + '/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mgmt.token}` },
+    body: deepJson,
+  });
+  ok(deepRes.status === 400, `Tief verschachteltes JSON (55 Ebenen) wird abgewiesen (${deepRes.status})`);
+
+  // Breaks: Note wird auf 500 Zeichen gekuerzt
+  // (Pause beenden, damit neue Anfrage moeglich ist)
+  const breakLong = (await api('POST', '/api/breaks/request', { token: cat.token, body: { note: 'B'.repeat(700) } })).json;
+  ok(breakLong.note.length === 500, `Pausen-Notiz auf 500 Zeichen gekuerzt (${breakLong.note.length})`);
+  // Cleanup: Pause ablehnen
+  await api('POST', `/api/breaks/${breakLong.id}/deny`, { token: lead.token, body: { reason: 'test' } });
+
   section('Security & Rate-Limiting');
   // Security headers pruefen
   const secRes = await fetch(BASE + '/api/health');

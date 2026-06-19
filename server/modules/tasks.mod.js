@@ -84,12 +84,13 @@ export default {
       const prio = ctx.body.prio || 'normal';
       if (!PRIOS.includes(prio)) bad('Priorität: hoch, normal oder niedrig');
       if (ctx.body.phase && !PHASES.includes(ctx.body.phase)) bad('Phase: aufbau, live oder abschluss');
+      if (ctx.body.deadline && !/^\d{2}:\d{2}$/.test(ctx.body.deadline)) bad('Frist muss im Format HH:MM sein');
       if (ctx.body.mazeId && !db.get('mazes', ctx.body.mazeId)) notFound('Maze nicht gefunden');
       if (ctx.body.assigneeId && !db.get('people', ctx.body.assigneeId)) notFound('Person nicht gefunden');
       const t = {
         id: id('t'), t: now(), time: hhmm(),
-        title: need(ctx.body, 'title').slice(0, 160),
-        desc: (ctx.body.desc || '').slice(0, 600),
+        title: need(ctx.body, 'title').slice(0, 200),
+        desc: (ctx.body.desc || '').slice(0, 2000),
         prio, critical: !!ctx.body.critical,
         status: 'offen',
         mazeId: ctx.body.mazeId || null,
@@ -146,14 +147,23 @@ export default {
         }
         upd.status = ctx.body.status;
         if (ctx.body.status === 'erledigt') upd.doneAt = now();
-        if (ctx.body.note !== undefined) upd.note = String(ctx.body.note).slice(0, 300);
+        if (ctx.body.note !== undefined) upd.note = String(ctx.body.note).slice(0, 2000);
         // Selbst-Annahme ohne Zuweisung: wer anpackt, übernimmt
         if (!t.assigneeId && (ctx.body.status === 'angenommen' || ctx.body.status === 'in_arbeit')) {
           upd.assigneeId = ctx.person.id;
         }
       }
       if (isOps(ctx)) {
-        for (const k of ['title', 'desc', 'deadline', 'phase']) if (ctx.body[k] !== undefined) upd[k] = ctx.body[k];
+        if (ctx.body.title !== undefined) upd.title = String(ctx.body.title).trim().slice(0, 200);
+        if (ctx.body.desc !== undefined) upd.desc = String(ctx.body.desc).slice(0, 2000);
+        if (ctx.body.deadline !== undefined) {
+          if (ctx.body.deadline && !/^\d{2}:\d{2}$/.test(ctx.body.deadline)) bad('Frist muss im Format HH:MM sein');
+          upd.deadline = ctx.body.deadline;
+        }
+        if (ctx.body.phase !== undefined) {
+          if (ctx.body.phase && !PHASES.includes(ctx.body.phase)) bad('Phase: aufbau, live oder abschluss');
+          upd.phase = ctx.body.phase;
+        }
         if (ctx.body.prio) { if (!PRIOS.includes(ctx.body.prio)) bad('Unbekannte Priorität'); upd.prio = ctx.body.prio; }
         if (ctx.body.critical !== undefined) upd.critical = !!ctx.body.critical;
       }

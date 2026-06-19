@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Input validation audit and hardening: Add comprehensive input validation to critical endpoints that lack it, protecting against malformed data that could corrupt the journal or crash modules during event night.",
+  "status": "in_progress",
+  "steps": [
+    "In server/modules/people.mod.js (or equivalent endpoint handling person creation/updates): Add validation for name (max 100 chars, non-empty), roles (must be valid ROLES array values), code (max 20 chars, alphanumeric+dash pattern), ort (max 100 chars), notizen (max 2000 chars). Any field exceeding limits should be truncated or rejected with 400.",
+    "In server/modules/chat.mod.js: Add validation for message text (max 2000 chars, must be non-empty after trim). Channel names (max 50 chars). This prevents someone pasting enormous text blobs that bloat the journal.",
+    "In server/modules/announce.mod.js: Add validation for announcement text (max 1000 chars), level must be one of the valid levels, scope must be a valid object structure.",
+    "In server/modules/tasks.mod.js: Add validation for task title (max 200 chars, required), note (max 2000 chars), deadline format validation (HH:MM pattern), prio must be valid value.",
+    "In server/modules/breaks.mod.js: Add validation for break request note (max 500 chars).",
+    "In server/kernel/http.js parseBody(): Add a JSON depth/size sanity check - if the parsed JSON has more than 50 nested levels or the body exceeds the route's size limit, reject with 400. This prevents deeply-nested JSON bombs.",
+    "Add test cases to smoke.mjs: verify that oversized text fields are properly truncated or rejected, verify deeply nested JSON is rejected."
+  ],
+  "acceptance_criteria": [
+    "npm test passes including new input validation tests",
+    "Posting a chat message > 2000 chars gets truncated or returns 400",
+    "Creating a task with a title > 200 chars gets truncated or returns 400",
+    "Deeply nested JSON (50+ levels) returns 400"
+  ],
+  "verification": [
+    "Run npm test and confirm all checks pass"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

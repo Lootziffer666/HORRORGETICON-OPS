@@ -2,6 +2,7 @@
 // Stammdaten, Status, Suche/Filter, Saison-Historie, Verknüpfungscodes,
 // Zusammenführen selbst angelegter Profile mit Verwaltungs-Datensätzen.
 import { ApiError, bad, need, notFound, id, iso, hashPin, shortCode, pick } from '../kernel/util.js';
+import { ROLES } from '../kernel/auth.js';
 
 export const STATUS = ['aktiv', 'angefragt', 'ausgeschieden', 'archiviert'];
 const EDITABLE = ['name', 'kontakt', 'telefon', 'ort', 'notizen', 'roles', 'status', 'season',
@@ -38,15 +39,23 @@ export default {
     }, { roles: ['management', 'lead'] });
 
     post('/api/people', async (ctx) => {
-      const name = need(ctx.body, 'name');
+      const name = need(ctx.body, 'name').slice(0, 100);
+      // Validate roles
+      const rawRoles = Array.isArray(ctx.body.roles) && ctx.body.roles.length ? ctx.body.roles : ['actor'];
+      const roles = rawRoles.filter((r) => ROLES.includes(r));
+      if (!roles.length) bad('Mindestens eine gültige Rolle erforderlich');
+      // Validate code
+      let code = (ctx.body.code || autoCode(db, name)).toUpperCase().slice(0, 20);
+      if (ctx.body.code && !/^[A-Z0-9\-]+$/.test(code)) bad('Personal-Code darf nur Buchstaben, Ziffern und Bindestriche enthalten');
       const p = {
         id: id('p'),
-        code: (ctx.body.code || autoCode(db, name)).toUpperCase(),
+        code,
         name,
-        roles: Array.isArray(ctx.body.roles) && ctx.body.roles.length ? ctx.body.roles : ['actor'],
+        roles,
         status: STATUS.includes(ctx.body.status) ? ctx.body.status : 'aktiv',
-        kontakt: ctx.body.kontakt || '', telefon: ctx.body.telefon || '', ort: ctx.body.ort || '',
-        notizen: ctx.body.notizen || '', season: ctx.body.season || String(new Date().getFullYear()),
+        kontakt: (ctx.body.kontakt || '').slice(0, 200), telefon: (ctx.body.telefon || '').slice(0, 50),
+        ort: (ctx.body.ort || '').slice(0, 100),
+        notizen: (ctx.body.notizen || '').slice(0, 2000), season: ctx.body.season || String(new Date().getFullYear()),
         selfCreated: false, linked: false,
         pin: ctx.body.pin ? hashPin(ctx.body.pin) : null,
         createdAt: iso(), createdBy: ctx.person.name,
@@ -60,11 +69,22 @@ export default {
     patch('/api/people/:id', async (ctx) => {
       const p = db.get('people', ctx.params.id) || notFound('Person nicht gefunden');
       const upd = pick(ctx.body, EDITABLE);
+      if (upd.name !== undefined) upd.name = String(upd.name).trim().slice(0, 100);
       if (upd.status && !STATUS.includes(upd.status)) bad('Unbekannter Status');
+      if (upd.roles !== undefined) {
+        if (!Array.isArray(upd.roles)) bad('Rollen müssen ein Array sein');
+        upd.roles = upd.roles.filter((r) => ROLES.includes(r));
+        if (!upd.roles.length) bad('Mindestens eine gültige Rolle erforderlich');
+      }
       if (upd.code) {
-        upd.code = upd.code.toUpperCase();
+        upd.code = upd.code.toUpperCase().slice(0, 20);
+        if (!/^[A-Z0-9\-]+$/.test(upd.code)) bad('Personal-Code darf nur Buchstaben, Ziffern und Bindestriche enthalten');
         if (db.one('people', (x) => x.code === upd.code && x.id !== p.id)) bad(`Personal-Code ${upd.code} ist schon vergeben`);
       }
+      if (upd.ort !== undefined) upd.ort = String(upd.ort).slice(0, 100);
+      if (upd.notizen !== undefined) upd.notizen = String(upd.notizen).slice(0, 2000);
+      if (upd.kontakt !== undefined) upd.kontakt = String(upd.kontakt).slice(0, 200);
+      if (upd.telefon !== undefined) upd.telefon = String(upd.telefon).slice(0, 50);
       if (ctx.body.neuePin) upd.pin = hashPin(ctx.body.neuePin);
       const next = db.put('people', p.id, { ...p, ...upd, updatedAt: iso(), updatedBy: ctx.person.name });
       // Ausgeschiedene/archivierte Personen von Positionen lösen

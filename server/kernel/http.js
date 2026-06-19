@@ -113,11 +113,33 @@ export async function parseBody(req) {
   if (!raw.length) return {};
   const ct = (req.headers['content-type'] || '').split(';')[0].trim();
   if (ct === 'application/json' || ct === '') {
-    try { return JSON.parse(raw.toString('utf8')); }
+    const str = raw.toString('utf8');
+    // Lightweight JSON depth check: count max consecutive opening braces/brackets
+    if (jsonDepth(str) > 50) throw new ApiError(400, 'JSON-Verschachtelung zu tief (max. 50 Ebenen)');
+    try { return JSON.parse(str); }
     catch { throw new ApiError(400, 'Ungültiges JSON im Anfrage-Body'); }
   }
   if (ct.startsWith('text/')) return { text: raw.toString('utf8') };
   return { raw };
+}
+
+/** Lightweight nesting depth check without recursive parsing. */
+function jsonDepth(str) {
+  let max = 0, depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    if (ch === 123 || ch === 91) { depth++; if (depth > max) max = depth; } // { or [
+    else if (ch === 125 || ch === 93) { depth--; } // } or ]
+    else if (ch === 34) { // skip strings (may contain braces)
+      i++;
+      while (i < str.length) {
+        if (str.charCodeAt(i) === 92) { i++; } // backslash escape
+        else if (str.charCodeAt(i) === 34) break;
+        i++;
+      }
+    }
+  }
+  return max;
 }
 
 export function sendJson(res, status, obj) {
