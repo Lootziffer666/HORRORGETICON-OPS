@@ -491,6 +491,23 @@ try {
   await api('POST', '/api/dnd/disable', { token: actor.token });
   await api('POST', '/api/live/status', { token: actor.token, body: { status: 'da' } });
 
+  section('Event-Timeline-Export');
+  const tlJson = (await api('GET', '/api/reports/timeline', { token: mgmt.token })).json;
+  ok(Array.isArray(tlJson) && tlJson.length > 0, `Timeline JSON liefert ${tlJson.length} Eintraege`);
+  const tlSample = tlJson.find((e) => e.t > 0);
+  ok(tlSample && tlSample.category && tlSample.text, 'Timeline-Eintraege haben t, category, text');
+  const tlSorted = tlJson.every((e, i) => i === 0 || e.t >= tlJson[i - 1].t);
+  ok(tlSorted, 'Timeline ist chronologisch sortiert');
+  const tlForb = await api('GET', '/api/reports/timeline', { token: actor.token });
+  ok(tlForb.status === 403, 'Actor darf Timeline nicht abrufen (403)');
+  const tlHtml = await api('GET', '/api/reports/timeline/export', { token: mgmt.token, raw: true });
+  ok(tlHtml.status === 200 && tlHtml.text.includes('<!DOCTYPE html>'), 'Timeline HTML-Export liefert HTML-Dokument');
+  ok(tlHtml.text.includes('Event-Timeline'), 'HTML-Export enthaelt Titel');
+  const tlCsv = await api('GET', '/api/reports/timeline/csv', { token: mgmt.token, raw: true });
+  ok(tlCsv.status === 200 && tlCsv.text.includes('Zeit;Kategorie;Text;Person;Maze;Level'), 'Timeline CSV hat korrekte Kopfzeile und Inhalt');
+  const tlCsvForb = await api('GET', '/api/reports/timeline/csv', { token: actor.token });
+  ok(tlCsvForb.status === 403, 'Actor darf Timeline-CSV nicht abrufen (403)');
+
   section('Input-Validierung');
   // Chat: Nachricht > 2000 Zeichen wird abgeschnitten
   const longMsg = 'A'.repeat(3000);

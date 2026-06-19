@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Implement the Event-Timeline-Export module: new server module (server/modules/timeline.mod.js) with three endpoints - GET /api/reports/timeline (JSON), GET /api/reports/timeline/export (HTML), GET /api/reports/timeline/csv (CSV). All restricted to 'management' role. Also add a button in the frontend reports view and add smoke tests.",
+  "status": "in_progress",
+  "steps": [
+    "Create server/modules/timeline.mod.js following the module pattern from server/modules/reports.mod.js. Export default with name: 'timeline', title: 'Event-Timeline', version: '1.0.0'.",
+    "Implement GET /api/reports/timeline handler: Collect all feed entries (db.all('feed')), all incidents (db.all('incidents') mapped to timeline entries with reaction times), all announcements (db.all('announcements')), all phase changes (feed entries with kind='system' containing 'Event-Phase'), all check-in/out entries (from db.all('presence')), all break requests (db.all('breaks')), all decisions (feed entries with kind='entscheidung'). Merge into one list sorted by timestamp (.t). Each entry: { t, time, category (one of: feed|meldung|durchsage|phase|checkin|pause|entscheidung), text, person (by name), mazeId, level, extra (reaction time for incidents) }. Support query params: ?from=timestamp&to=timestamp for time filtering.",
+    "Implement GET /api/reports/timeline/export handler: Build a complete HTML document (inline CSS, no external deps) with: header showing event name (from db.get('settings', 'main')?.nightLabel), date, phase timestamps; a statistics summary section (total entries, incidents count, avg reaction time, announcements count, phase changes); then the chronological timeline with colored category badges. Use sendText(ctx.res, 200, html, 'text/html; charset=utf-8', { 'Content-Disposition': 'inline; filename=\"timeline.html\"' }) and return Symbol.for('handled').",
+    "Implement GET /api/reports/timeline/csv handler: Export the timeline as semicolon-separated CSV with BOM (matching csv.mod.js pattern). Columns: Zeit, Kategorie, Text, Person, Maze, Level. Use sendText() like in csv.mod.js with Content-Disposition attachment header. Return Symbol.for('handled').",
+    "All three routes must have { roles: ['management'] } restriction.",
+    "In web/js/views/reports.js: Add an 'Event-Timeline exportieren' section after the existing Exporte row. Add two buttons: 'HTML/Drucken' (opens /api/reports/timeline/export in new tab via window.open with token param) and 'CSV' (uses the existing download() helper from api.js to download /api/reports/timeline/csv).",
+    "Add a test section in server/test/smoke.mjs: section('Event-Timeline-Export'). Test: (a) GET /api/reports/timeline returns array with entries, (b) actor gets 403, (c) GET /api/reports/timeline/export returns HTML (status 200, contains <!DOCTYPE), (d) GET /api/reports/timeline/csv returns CSV text."
+  ],
+  "acceptance_criteria": [
+    "GET /api/reports/timeline with management token returns a sorted JSON array of timeline entries",
+    "GET /api/reports/timeline/export returns a full HTML document with Content-Type text/html",
+    "GET /api/reports/timeline/csv returns CSV with semicolons and BOM",
+    "All three endpoints return 403 for non-management users",
+    "The reports view in web/js/views/reports.js has timeline export buttons",
+    "Running 'node server/test/smoke.mjs' passes including new timeline tests"
+  ],
+  "verification": [
+    "Run 'node server/test/smoke.mjs' and confirm all tests pass including the new 'Event-Timeline-Export' section"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
