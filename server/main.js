@@ -10,7 +10,7 @@ import { DB } from './kernel/db.js';
 import { Bus } from './kernel/bus.js';
 import { Auth } from './kernel/auth.js';
 import { Kernel } from './kernel/kernel.js';
-import { Router, parseBody, sendJson, sendText, serveStatic } from './kernel/http.js';
+import { Router, RateLimiter, readBody, sendJson, sendText, serveStatic } from './kernel/http.js';
 import { ApiError } from './kernel/util.js';
 import { seedDemo, ensureBaseline } from './seed/seed.js';
 
@@ -44,6 +44,21 @@ if ((flag('demo') || process.env.OPS_DEMO === '1') && db.count('people') === 0) 
 kernel.registerAdminRoutes();
 await kernel.loadAll(path.join(__dirname, 'modules'));
 
+// ─── Rate-Limiter-Instanzen ─────────────────────────────────────────────────
+// Auth-Endpunkte: streng (10 pro 5 min) — gegen Brute-Force.
+const authLimiter = new RateLimiter({ windowMs: 5 * 60_000, max: 10 });
+// Allgemeine API: 500 Requests/Minute/IP — gegen Missbrauch auf dem Event-LAN.
+const apiLimiter = new RateLimiter({ windowMs: 60_000, max: 500 });
+
+// Endpunkte mit grossem Body (z.B. CSV-Import): 8 MB erlaubt.
+const LARGE_BODY_ROUTES = new Set(['/api/csv/import/personen']);
+// Standard-Limit fuer alle anderen API-Bodies: 256 KB.
+const DEFAULT_BODY_LIMIT = 256 * 1024;
+const LARGE_BODY_LIMIT = 8 * 1024 * 1024;
+
+// Globaler Request-Timeout: 30 Sekunden.
+const REQUEST_TIMEOUT_MS = 30_000;
+
 // SSE-Stream (Kernel-eigen, läuft auch wenn Module straucheln)
 router.add('GET', '/api/stream', async (ctx) => {
   bus.attach(ctx.req, ctx.res, ctx);
@@ -52,23 +67,81 @@ router.add('GET', '/api/stream', async (ctx) => {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const ip = req.socket.remoteAddress || '0.0.0.0';
+
+  // ─── Security Headers (immer, auch bei Fehlern) ────────────────────────────
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
   try {
     if (url.pathname.startsWith('/api/')) {
+      // API-spezifische Security-Headers
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+
+      // ─── Rate-Limiting ───────────────────────────────────────────────────────
+      const isAuthRoute = url.pathname === '/api/auth/login' || url.pathname === '/api/auth/register';
+      if (isAuthRoute) {
+        if (!authLimiter.allow(ip)) {
+          throw new ApiError(429, 'Zu viele Anmeldeversuche — bitte in einigen Minuten erneut versuchen');
+        }
+      }
+      if (!apiLimiter.allow(ip)) {
+        throw new ApiError(429, 'Anfragelimit erreicht — bitte kurz warten');
+      }
+
       const m = router.match(req.method, url.pathname);
       if (!m) throw new ApiError(404, `Unbekannter Endpunkt ${req.method} ${url.pathname}`);
       const authCtx = auth.resolve(req);
       const openRoutes = new Set(['/api/auth/login', '/api/auth/register', '/api/health', '/api/auth/orte']);
       if (!authCtx && !openRoutes.has(url.pathname)) throw new ApiError(401, 'Bitte anmelden');
+
+      // ─── Body-Parsing mit konfigurierbarem Limit ─────────────────────────────
+      const bodyLimit = LARGE_BODY_ROUTES.has(url.pathname) ? LARGE_BODY_LIMIT : DEFAULT_BODY_LIMIT;
+      let body = {};
+      if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'PUT') {
+        const raw = await readBody(req, bodyLimit);
+        if (!raw.length) { body = {}; }
+        else {
+          const ct = (req.headers['content-type'] || '').split(';')[0].trim();
+          if (ct === 'application/json' || ct === '') {
+            try { body = JSON.parse(raw.toString('utf8')); }
+            catch { throw new ApiError(400, 'Ungültiges JSON im Anfrage-Body'); }
+          } else if (ct.startsWith('text/')) { body = { text: raw.toString('utf8') }; }
+          else { body = { raw }; }
+        }
+      }
+
       const ctx = {
         req, res, url, params: m.params, query: url.searchParams,
         session: authCtx?.session || null, person: authCtx?.person || null,
-        body: (req.method === 'POST' || req.method === 'PATCH' || req.method === 'PUT') ? await parseBody(req) : {},
+        body,
       };
-      const out = await m.route.handler(ctx);
+
+      // ─── Request-Timeout (30s) ──────────────────────────────────────────────
+      const timeoutPromise = new Promise((_, reject) => {
+        const timer = setTimeout(() => reject(new ApiError(504, 'Zeitüberschreitung — Anfrage abgebrochen')), REQUEST_TIMEOUT_MS);
+        timer.unref?.();
+        // Store for cleanup on success
+        ctx._timeout = timer;
+      });
+
+      let out;
+      try {
+        out = await Promise.race([m.route.handler(ctx), timeoutPromise]);
+      } finally {
+        if (ctx._timeout) clearTimeout(ctx._timeout);
+      }
+
       if (out === Symbol.for('handled')) return; // z. B. SSE oder eigener Download
       sendJson(res, 200, out ?? { ok: true });
       return;
     }
+
+    // Static files: allow framing (SAMEORIGIN) for PWA
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'");
+
     if (serveStatic(res, WEB_DIR, url.pathname)) return;
     // SPA-Fallback: alles Unbekannte → index.html (Hash-Routing im Client)
     serveStatic(res, WEB_DIR, '/index.html') || sendText(res, 404, 'Nicht gefunden');

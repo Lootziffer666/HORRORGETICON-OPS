@@ -408,6 +408,35 @@ try {
   const kdBadMazeId = await api('PATCH', '/api/kidsday/mazes/nonexistent-maze-xyz', { token: mgmt.token, body: { intensity: 'leicht' } });
   ok(kdBadMazeId.status === 404, 'Nicht existentes Maze liefert 404');
 
+  section('Security & Rate-Limiting');
+  // Security headers pruefen
+  const secRes = await fetch(BASE + '/api/health');
+  ok(secRes.headers.get('x-content-type-options') === 'nosniff', 'X-Content-Type-Options: nosniff auf API');
+  ok(secRes.headers.get('x-frame-options') === 'DENY', 'X-Frame-Options: DENY auf API');
+  ok(secRes.headers.get('referrer-policy') === 'strict-origin-when-cross-origin', 'Referrer-Policy gesetzt');
+  ok(secRes.headers.get('content-security-policy')?.includes("default-src 'none'"), 'CSP auf API-Responses');
+
+  // Body-Groesse: 256KB-Limit fuer Standard-API
+  const bigBody = JSON.stringify({ data: 'x'.repeat(300 * 1024) });
+  const bigRes = await fetch(BASE + '/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mgmt.token}` },
+    body: bigBody,
+  });
+  ok(bigRes.status === 413, 'Body > 256KB auf Standard-Endpunkt ergibt 413');
+
+  // Rate-Limiting: Login-Endpunkt (10 pro 5 min)
+  // Einige Logins wurden in frueheren Sektionen bereits verbraucht.
+  // Wir senden genug Anfragen, damit das Limit sicher erreicht wird.
+  const rlResults = [];
+  for (let i = 0; i < 15; i++) {
+    const r = await api('POST', '/api/auth/login', { body: { code: 'XXXX', pin: '0000' } });
+    rlResults.push(r.status);
+  }
+  ok(rlResults.includes(429), 'Rate-Limit 429 nach zu vielen Login-Versuchen');
+  const first429 = rlResults.indexOf(429);
+  ok(first429 >= 1, 'Nicht sofort beim ersten Versuch gedrosselt');
+
   section('Crash-Sicherheit: kaputter Snapshot → Wiederherstellung');
   server.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 1200));
