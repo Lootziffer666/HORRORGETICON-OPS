@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "docs",
+  "description": "Update all four pitch files with current numbers (300+ tests, 23 modules), realistic market prices, and new feature mentions",
+  "status": "in_progress",
+  "steps": [
+    "1. In pitch/Horrorgeticon_Ops_Pitchdeck.html line 159: Change '<b>172</b> automatische Tests, alle gruen' to '<b>300+</b> automatische Tests, alle gruen'",
+    "2. In pitch/Horrorgeticon_Ops_Pitchdeck.html around line 366-368 (Technik slide pills): Change '125 API-End-to-End-Checks' to '241 API-End-to-End-Checks' and '47 Browser-E2E-Checks' to '66 Browser-E2E-Checks'",
+    "3. In pitch/Horrorgeticon_Ops_Pitchdeck.html, in the Technik slide (around line 354-370), add new features to the cards or add a new pill mentioning: Kids Day Modus, Do-Not-Disturb, Ablaufplan-Versionierung, Dokumenten-Hub, Event-Timeline-Export, Offline-Robustheit. These can be added as additional pills below the existing ones.",
+    "4. In pitch/Horrorgeticon_Ops_Pitchdeck.html, the Investition slide (around line 416): Change the market price from '9.400' to '12.800' (Saisonpaket); keep '3.400' friendship price. Update the subtext about platform development to say it would cost 80.000-120.000 EUR at market rates. The arrow-price section needs updating.",
+    "5. In pitch/Kostenaufstellung.html: Change 'Stand: <b>12.06.2026</b>' to 'Stand: <b>21.06.2026</b>'",
+    "6. In pitch/Kostenaufstellung.html: Update the 'Im Preis enthalten (0 EUR)' box - change '18 Server-Module, 172 automatische Tests' to '23 Server-Module, 300+ automatische Tests'. Add text making clear the development would cost 80.000-120.000 EUR at freelancer rates (800-1200h at 100 EUR/h).",
+    "7. In pitch/Kostenaufstellung.html: Increase market prices realistically to sum ~12.800 EUR total (from 9.400). Suggested: Pos.1: 3.500->4.800, Pos.2: 1.800->2.400, Pos.3: 1.200->1.500, Pos.4: 900->1.200, Pos.5: 1.400->2.000, Pos.6: 600->900. Sum becomes 12.800. Friendship price stays 3.400 EUR.",
+    "8. In pitch/Kostenaufstellung.html: Update the savings pill at bottom to reflect new difference (12.800 - 3.400 = 9.400, which is 73% savings).",
+    "9. In pitch/Kostenaufstellung.html: Update the sub/lead text to explicitly mention the development market value (80.000-120.000 EUR).",
+    "10. In pitch/Anschreiben.md: Change '172-fach pruefen lassen' to '300-fach pruefen lassen' (line in P.S. section).",
+    "11. In pitch/Anschreiben.md: Optionally mention Kids Day / 120 Darsteller in the WhatsApp variant or spickzettel section.",
+    "12. In pitch/README.md: Update '172 automatische Tests' to '300+ automatische Tests' and fix the breakdown to '241 API-Checks + 66 Browser-E2E-Checks'. Change the Kostenaufstellung description from '9.400 EUR -> 3.400 EUR' to '12.800 EUR -> 3.400 EUR'."
+  ],
+  "acceptance_criteria": [
+    "grep '172' pitch/ returns no hits (all replaced with 300+/300)",
+    "grep '18 Server-Module' pitch/ returns no hits (all replaced with 23)",
+    "grep '9.400' pitch/Kostenaufstellung.html returns no hits in the sum row (market price updated)",
+    "Friendship price 3.400 EUR is preserved unchanged everywhere",
+    "pitch/Kostenaufstellung.html contains '21.06.2026' as current date",
+    "pitch/Anschreiben.md contains '300-fach' instead of '172-fach'"
+  ],
+  "verification": [
+    "grep -rn '172' pitch/ should return 0 results",
+    "grep -rn '18 Server-Module' pitch/ should return 0 results",
+    "grep -n '3.400' pitch/Kostenaufstellung.html should show friendship prices preserved",
+    "grep -n '300' pitch/Anschreiben.md should show updated test count",
+    "grep -n '21.06.2026' pitch/Kostenaufstellung.html should show updated date"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

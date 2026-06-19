@@ -27,12 +27,14 @@ Im Anhang findest du zwei Dateien:
    Spaß machen darf und die Zahlen trotzdem seriös bleiben. Kurzfassung: Die
    Entwicklung ist passiert und kostet euch nichts. Das Saisonpaket (Einrichtung,
    Schulung, Generalprobe, Eventnacht-Support, Nachlese) liegt marktüblich bei
-   ~9.400 € — ihr zahlt 3.400 €. Freundschaftspreis, mit Backfisch-Garantie.
+   ~12.800 € — ihr zahlt 3.400 €. Freundschaftspreis, mit Backfisch-Garantie.
    Kein Witz. Also doch, ein bisschen — aber ein vertraglich gemeinter.
 
 Worum es im Kern geht, in einem Satz: **Die Horrornacht darf eskalieren, die Orga
 nicht.** Leitstand fürs Management, Tablet für die Maze Leads, App für die Scare
 Actors, QR-Marken fürs Catering — und Excel wird in Würde zum Importformat degradiert.
+Neu: ein Kids Day Modus, der 120 Darsteller in einem Rutsch auf familienfreundlich
+umschaltet.
 
 Mein Vorschlag: **30 Minuten, ich bringe das Live-System mit, ihr bringt die Skepsis.**
 Ich kann Anfang nächster Woche fast immer — Montag- oder Dienstagabend wäre ideal,
@@ -45,7 +47,7 @@ Beste Grüße & bis gleich im Kalender,
 [Dein Name]
 
 P.S.: Die Demo läuft auf meinem Laptop, braucht kein Internet und überlebt laut
-Testsuite sogar einen Absturz mitten in der Nacht. Ich habe es 172-fach prüfen
+Testsuite sogar einen Absturz mitten in der Nacht. Ich habe es 300-fach prüfen
 lassen. Man will ja nicht unvorbereitet zu Leuten, die beruflich Menschen erschrecken.
 
 ---
