@@ -57,10 +57,22 @@ export default {
         if (!INTENSITIES.includes(ctx.body.defaultIntensity)) bad('Intensitaet muss leicht, mittel oder aus sein');
         upd.defaultIntensity = ctx.body.defaultIntensity;
       }
-      if (ctx.body.ageGroups !== undefined) upd.ageGroups = ctx.body.ageGroups;
-      if (ctx.body.mazeConfigs !== undefined) upd.mazeConfigs = ctx.body.mazeConfigs;
+      if (ctx.body.ageGroups !== undefined) {
+        if (!Array.isArray(ctx.body.ageGroups)) bad('ageGroups muss ein Array sein');
+        if (ctx.body.ageGroups.length > 20) bad('ageGroups darf maximal 20 Eintraege haben');
+        upd.ageGroups = ctx.body.ageGroups;
+      }
+      if (ctx.body.mazeConfigs !== undefined) {
+        if (!Array.isArray(ctx.body.mazeConfigs)) bad('mazeConfigs muss ein Array sein');
+        if (ctx.body.mazeConfigs.length > 50) bad('mazeConfigs darf maximal 50 Eintraege haben');
+        upd.mazeConfigs = ctx.body.mazeConfigs;
+      }
       if (ctx.body.safetyBriefingRequired !== undefined) upd.safetyBriefingRequired = !!ctx.body.safetyBriefingRequired;
-      if (ctx.body.parentStations !== undefined) upd.parentStations = ctx.body.parentStations;
+      if (ctx.body.parentStations !== undefined) {
+        if (!Array.isArray(ctx.body.parentStations)) bad('parentStations muss ein Array sein');
+        if (ctx.body.parentStations.length > 50) bad('parentStations darf maximal 50 Eintraege haben');
+        upd.parentStations = ctx.body.parentStations;
+      }
       if (ctx.body.emergencyProtocol !== undefined) upd.emergencyProtocol = String(ctx.body.emergencyProtocol).slice(0, 1000);
 
       const next = { ...cur, ...upd };
@@ -165,14 +177,20 @@ export default {
       });
 
       // Crew-Bereitschaft
+      // NOTE: Counts the full roster (all actors + leads), not just Kids Day assigned
+      // crew. Acceptable for v1 since the full crew is expected on Kids Day events.
       const people = db.all('people');
       const checkedIn = people.filter((p) => p.checkedIn || p.status === 'anwesend');
       const crew = people.filter((p) => (p.roles || []).includes('actor') || (p.roles || []).includes('lead'));
 
       // Wartezeit-Schaetzung (Durchschnitt der letzten Gruppen)
+      // Coerce to Number and filter out NaN to guard against ISO-string timestamps.
       const completedGroups = todayGroups.filter((g) => g.doneAt && g.startedAt);
-      const avgWaitMin = completedGroups.length
-        ? Math.round(completedGroups.reduce((s, g) => s + (g.startedAt - g.t) / 60000, 0) / completedGroups.length)
+      const validWaits = completedGroups
+        .map((g) => Number(g.startedAt) - Number(g.t))
+        .filter((v) => Number.isFinite(v) && v >= 0);
+      const avgWaitMin = validWaits.length
+        ? Math.round(validWaits.reduce((s, v) => s + v, 0) / validWaits.length / 60000)
         : null;
 
       return {

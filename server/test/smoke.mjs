@@ -400,6 +400,14 @@ try {
   const kdForbMaze = await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: actor.token, body: { intensity: 'aus' } });
   ok(kdForbMaze.status === 403, 'Actor darf Maze-Intensitaet nicht aendern (403)');
 
+  // Invalid-input error paths
+  const kdBadIntensity = await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { defaultIntensity: 'extrem' } });
+  ok(kdBadIntensity.status === 400, 'Ungueltige Intensitaet wird abgewiesen (400)');
+  const kdBadArray = await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { ageGroups: 'not-an-array' } });
+  ok(kdBadArray.status === 400, 'Nicht-Array ageGroups wird abgewiesen (400)');
+  const kdBadMazeId = await api('PATCH', '/api/kidsday/mazes/nonexistent-maze-xyz', { token: mgmt.token, body: { intensity: 'leicht' } });
+  ok(kdBadMazeId.status === 404, 'Nicht existentes Maze liefert 404');
+
   section('Crash-Sicherheit: kaputter Snapshot → Wiederherstellung');
   server.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 1200));

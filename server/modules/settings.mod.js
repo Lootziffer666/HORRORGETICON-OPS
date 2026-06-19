@@ -3,7 +3,10 @@
 // Catering-Budgets, Fahrgruppen-Parameter, eigene Orte für das Matching.
 import { bad, need, id, now, iso, hhmm } from '../kernel/util.js';
 
-const EDITABLE = ['eventName', 'nightLabel', 'eventDate', 'active', 'shiftStart', 'shiftEnd', 'catering', 'carpool', 'sla', 'kidsDay'];
+// NOTE: kidsDay is intentionally excluded — all kidsDay writes go through the
+// dedicated kidsday module to avoid dual-write conflicts and ensure proper
+// validation and SSE publishing on that path.
+const EDITABLE = ['eventName', 'nightLabel', 'eventDate', 'active', 'shiftStart', 'shiftEnd', 'catering', 'carpool', 'sla'];
 
 // Event-Lifecycle (horrops_fullstack.md): Vorbereitung → Aufbau → Live → Abschluss
 export const PHASES = ['vorbereitung', 'aufbau', 'live', 'abschluss'];
@@ -28,7 +31,6 @@ export default {
       for (const k of EDITABLE) if (ctx.body[k] !== undefined) upd[k] = ctx.body[k];
       if (upd.catering) upd.catering = { ...cur.catering, ...upd.catering };
       if (upd.carpool) upd.carpool = { ...cur.carpool, ...upd.carpool };
-      if (upd.kidsDay) upd.kidsDay = { ...cur.kidsDay, ...upd.kidsDay };
       const next = db.put('settings', 'main', { ...cur, ...upd });
       feed(`⚙️ Einstellungen aktualisiert (${ctx.person.name}).`, { kind: 'system' });
       bus.publish('settings.changed', { keys: Object.keys(upd) });
