@@ -11,18 +11,25 @@ export class ModuleOffError extends Error {
 }
 
 export async function api(method, path, body) {
+  const doFetch = () => fetch(path, {
+    method,
+    headers: {
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
   let res;
   try {
-    res = await fetch(path, {
-      method,
-      headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    res = await doFetch();
   } catch {
-    throw new Error('Keine Verbindung zum Server');
+    // Einmaliger Retry nach 2s bei Netzwerkfehler
+    try {
+      await new Promise((r) => setTimeout(r, 2000));
+      res = await doFetch();
+    } catch {
+      throw new Error('Keine Verbindung zum Server');
+    }
   }
   if (res.status === 204) return null;
   const ct = res.headers.get('content-type') || '';

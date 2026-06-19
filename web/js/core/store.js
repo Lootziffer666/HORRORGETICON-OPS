@@ -17,6 +17,7 @@ const TOPIC_BY_EVENT = {
   'presence.changed': ['live'],
   'break.changed': ['breaks', 'live'],
   'incident.changed': ['incidents', 'live', 'feed'],
+  'dnd.changed': ['dnd', 'live'],
   'announce.new': ['announce', 'feed'],
   'announce.read': ['announce'],
   'chat.message': ['chat'],
@@ -58,7 +59,12 @@ export function connectSSE() {
   const token = getToken();
   if (!token) return;
   es = new EventSource(`/api/stream?token=${encodeURIComponent(token)}`);
-  es.addEventListener('open', () => { retryMs = 1500; setOnline(true); });
+  es.addEventListener('open', () => {
+    const wasOffline = !store.online;
+    retryMs = 1500;
+    setOnline(true);
+    if (wasOffline) emit('reconnected');
+  });
   es.addEventListener('error', () => {
     setOnline(false);
     es.close(); es = null;

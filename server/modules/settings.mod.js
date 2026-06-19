@@ -3,6 +3,9 @@
 // Catering-Budgets, Fahrgruppen-Parameter, eigene Orte für das Matching.
 import { bad, need, id, now, iso, hhmm } from '../kernel/util.js';
 
+// NOTE: kidsDay is intentionally excluded — all kidsDay writes go through the
+// dedicated kidsday module to avoid dual-write conflicts and ensure proper
+// validation and SSE publishing on that path.
 const EDITABLE = ['eventName', 'nightLabel', 'eventDate', 'active', 'shiftStart', 'shiftEnd', 'catering', 'carpool', 'sla'];
 
 // Event-Lifecycle (horrops_fullstack.md): Vorbereitung → Aufbau → Live → Abschluss

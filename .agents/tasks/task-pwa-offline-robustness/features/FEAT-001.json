@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Expand Service Worker cache to include all JS files, add offline connection banner to all shells, improve SSE reconnect with view auto-refresh, and add API retry logic for network errors.",
+  "status": "in_progress",
+  "steps": [
+    "1. Update web/sw.js: Bump CACHE version to 'hgo-shell-v2'. Add ALL JS files to the SHELL array: '/js/app.js', '/js/core/api.js', '/js/core/dom.js', '/js/core/fmt.js', '/js/core/qr.js', '/js/core/store.js', '/js/core/ui.js', '/js/shell/desktop.js', '/js/shell/login.js', '/js/shell/phone.js', '/js/shell/station.js', '/js/shell/tablet.js', '/js/views/alarm.js', '/js/views/announce.js', '/js/views/attendance.js', '/js/views/backups.js', '/js/views/breaks.js', '/js/views/carpool.js', '/js/views/catering_mgmt.js', '/js/views/chat.js', '/js/views/dashboard.js', '/js/views/dbadmin.js', '/js/views/incidents.js', '/js/views/kidsday.js', '/js/views/livemap.js', '/js/views/mazes.js', '/js/views/modules.js', '/js/views/people.js', '/js/views/profile.js', '/js/views/reports.js', '/js/views/schedule.js', '/js/views/settings.js', '/js/views/shared.js', '/js/views/tasks.js', '/js/views/wallet.js'.",
+    "2. Add a persistent offline banner to the UI. Create a new module web/js/core/offline-banner.js that exports an `initOfflineBanner()` function. This function subscribes to `on('online', ...)` from store.js. When store.online becomes false, it inserts a fixed banner at the top of the page showing 'Verbindung unterbrochen — Reconnect lauft...' with a warning color (var(--color-error) background, white text). When store.online becomes true again, it changes the text to 'Wieder verbunden ✓' with success color (var(--color-success)), then fades out and removes itself after 3 seconds. The banner should be a fixed-position element with z-index 80 (below modal overlays at 60/100 but above normal content). Add corresponding CSS to web/css/app.css for the .offline-banner class.",
+    "3. Call initOfflineBanner() from web/js/app.js in the enterApp() function (after connectSSE()). This makes it active in all shells (phone, tablet, desktop, station) without modifying each shell individually.",
+    "4. In web/js/core/store.js: After a successful SSE reconnect (in the 'open' event handler where setOnline(true) is called), emit a new event 'reconnected' so active views know to refresh. This is separate from the 'online' event which fires on any online state change.",
+    "5. In web/js/core/ui.js: In the guardedView function, subscribe the guarded view to the 'reconnected' event. When 'reconnected' fires, call the refresh function (run()) to reload the current view data. This way ALL guarded views auto-refresh after reconnect without changing each view individually.",
+    "6. In web/js/core/api.js: Add retry logic to the api() function. In the catch block (where it currently throws 'Keine Verbindung zum Server'), instead of immediately throwing, wait 2000ms and retry the fetch ONCE. If the retry also fails, then throw the original error. Only retry on network errors (the catch), NOT on HTTP error responses (4xx/5xx). Keep the existing error handling for HTTP responses unchanged.",
+    "7. Add web/js/core/offline-banner.js to the SW cache list in web/sw.js."
+  ],
+  "acceptance_criteria": [
+    "web/sw.js SHELL array contains all 34+ JS files from web/js/ (app.js + 6 core + 5 shell + 22 views + offline-banner.js)",
+    "CACHE version is updated to 'hgo-shell-v2'",
+    "A visible offline banner appears when store.online becomes false, showing German text",
+    "The banner shows 'Wieder verbunden' with success styling when connection returns, then auto-removes after 3s",
+    "After SSE reconnect, a 'reconnected' event is emitted",
+    "guardedView auto-refreshes active views on 'reconnected'",
+    "api() retries once after 2s on network errors before throwing",
+    "Existing tests (npm test) continue to pass"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all tests pass",
+    "Verify web/sw.js contains at least 34 entries in the SHELL array by grepping",
+    "Verify offline-banner.js exists and exports initOfflineBanner",
+    "Verify store.js emits 'reconnected' event by grepping for emit('reconnected')",
+    "Verify api.js has retry logic with setTimeout 2000 by reading the file"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

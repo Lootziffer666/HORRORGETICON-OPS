@@ -51,9 +51,9 @@ export default {
         bad('Es läuft bereits eine Pausen-Anfrage');
       }
       const b = {
-        id: id('b'), personId: pid, note: (ctx.body.note || '').slice(0, 300),
+        id: id('b'), personId: pid, note: (ctx.body.note || '').slice(0, 500),
         requestedAt: now(), time: hhmm(), status: 'offen',
-        durationMin: Number(ctx.body.durationMin) || DEFAULT_BREAK_MIN,
+        durationMin: Math.min(Math.max(Number(ctx.body.durationMin) || DEFAULT_BREAK_MIN, 1), 120),
       };
       db.put('breaks', b.id, b);
       const e = enrich(b);

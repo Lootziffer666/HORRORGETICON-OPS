@@ -1,6 +1,6 @@
 // Management · Berichte — Nacht-Auswertung + Saison-Historie + Exporte
 import { h, ic, badge, bar, panel } from '../core/dom.js';
-import { get, download } from '../core/api.js';
+import { get, download, getToken } from '../core/api.js';
 import { on } from '../core/store.js';
 import { kpi } from './shared.js';
 
@@ -48,5 +48,10 @@ export async function reportsView({ onCleanup, refresh }) {
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
       h('span', { class: 'overline' }, 'Exporte:'),
       ...[['personen', 'Personen'], ['zuteilung', 'Zuteilung'], ['catering', 'Catering'], ['meldungen', 'Meldungen'], ['fahrgruppen', 'Fahrgruppen']]
-        .map(([k, l]) => h('button', { class: 'btn sm quiet', onclick: () => download(`/api/csv/export/${k}`) }, ic('download', 13), l))));
+        .map(([k, l]) => h('button', { class: 'btn sm quiet', onclick: () => download(`/api/csv/export/${k}`) }, ic('download', 13), l))),
+
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+      h('span', { class: 'overline' }, 'Event-Timeline exportieren:'),
+      h('button', { class: 'btn sm quiet', onclick: () => { const t = getToken(); window.open(`/api/reports/timeline/export?token=${encodeURIComponent(t)}`); } }, ic('print', 13), 'HTML/Drucken'),
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/reports/timeline/csv') }, ic('download', 13), 'CSV')));
 }

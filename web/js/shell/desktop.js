@@ -18,9 +18,12 @@ import { breaksView } from '../views/breaks.js';
 import { incidentsView } from '../views/incidents.js';
 import { announceView } from '../views/announce.js';
 import { chatView } from '../views/chat.js';
+import { kidsdayView } from '../views/kidsday.js';
+import { timelineView } from '../views/timeline.js';
 import { cateringMgmtView } from '../views/catering_mgmt.js';
 import { carpoolView } from '../views/carpool.js';
 import { scheduleView } from '../views/schedule.js';
+import { documentsView } from '../views/documents.js';
 import { reportsView } from '../views/reports.js';
 import { dbadminView } from '../views/dbadmin.js';
 import { modulesView } from '../views/modules.js';
@@ -37,6 +40,8 @@ const NAV = [
   { id: 'meldungen', label: 'Meldungen', icon: 'alert', view: incidentsView, cnt: 'incidents' },
   { id: 'durchsagen', label: 'Durchsagen', icon: 'mega', view: announceView },
   { id: 'chat', label: 'Chat', icon: 'chat', view: chatView, cnt: 'chat' },
+  { id: 'kidsday', label: 'Kids Day', icon: 'users', view: kidsdayView },
+  { id: 'timeline', label: 'Ablaufplan', icon: 'cal', view: timelineView },
   { sec: 'Planung' },
   { id: 'personen', label: 'Personen', icon: 'users', view: peopleView },
   { id: 'mazes', label: 'Mazes & Zuteilung', icon: 'door', view: mazesView },
@@ -44,6 +49,7 @@ const NAV = [
   { id: 'fahrgruppen', label: 'Fahrgruppen', icon: 'car', view: carpoolView },
   { id: 'zeitplan', label: 'Zeitplan', icon: 'cal', view: scheduleView },
   { id: 'berichte', label: 'Berichte', icon: 'chart', view: reportsView },
+  { id: 'dokumente', label: 'Dokumente', icon: 'doc', view: documentsView },
   { sec: 'System' },
   { id: 'db', label: 'Datenbank', icon: 'db', view: dbadminView },
   { id: 'module', label: 'Module', icon: 'puzzle', view: modulesView },

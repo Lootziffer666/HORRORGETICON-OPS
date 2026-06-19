@@ -1,0 +1,28 @@
+{
+  "project_type": "Node.js event-management platform (Horrorgeticon Ops) with custom server framework, vanilla JS PWA frontend",
+  "language": "JavaScript (ES modules)",
+  "build_system": "None (zero npm dependencies). Direct Node.js execution.",
+  "test_framework": "Custom smoke test: server/test/smoke.mjs - spawns a real server with --demo, hits all API endpoints sequentially",
+  "build_command": "No build step needed",
+  "test_command": "node server/test/smoke.mjs",
+  "verification_instructions": "1. Run 'node server/test/smoke.mjs' - all tests must pass. 2. Start server with 'node server/main.js --demo' and test endpoints manually.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "No setup needed. Node.js >= 18 is the only requirement. Zero npm dependencies.",
+  "environment_constraints": "No npm install needed. No Docker. Tests run against a real server instance spawned by the test file.",
+  "contribution_requirements": "All server modules follow the pattern in server/modules/*.mod.js. Routes are registered via { get, post } destructured from the route registrar. Role-based access via { roles: ['management'] } option. HTML/CSV exports use sendText() from kernel/http.js.",
+  "key_patterns": "Module pattern: export default { name, title, version, description, routes({ get, post, ... }, { db, bus, feed }) { ... } }. Feed entries stored in 'feed' collection with { id, t, time, text, kind, level, scope, by, module, mazeId }. CSV exports use sendText(ctx.res, 200, content, contentType, headers) and return Symbol.for('handled'). Role checking: { roles: ['management'] } passed as second arg to route registration. Tests: section('Title') + ok(condition, label) pattern in smoke.mjs.",
+  "relevant_files": [
+    "server/modules/reports.mod.js",
+    "server/modules/announce.mod.js",
+    "server/modules/csv.mod.js",
+    "server/modules/live.mod.js",
+    "server/modules/settings.mod.js",
+    "server/kernel/kernel.js",
+    "server/kernel/http.js",
+    "server/kernel/util.js",
+    "server/test/smoke.mjs",
+    "web/js/views/reports.js",
+    "web/js/core/api.js"
+  ],
+  "directory_structure": "server/modules/*.mod.js (feature modules), server/kernel/ (core: db, bus, auth, http, util), server/test/smoke.mjs (tests), server/seed/seed.js (demo data), web/ (frontend PWA), web/js/views/ (view components), web/js/core/ (shared utilities)"
+}

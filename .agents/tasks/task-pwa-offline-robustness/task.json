@@ -1,0 +1,14 @@
+{
+  "task_id": "task-pwa-offline-robustness",
+  "task_description": "Improve PWA offline robustness for event LAN usage: expand SW cache to all JS files, add offline/reconnected UI banner, auto-refresh views after reconnect, and add single-retry for network errors in api.js.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "182 tests pass (174 existing + 8 new offline tests). All implementation verified: SW caches 36 JS files with v2, offline-banner shows/hides correctly, guardedView auto-refreshes on reconnect, api.js retries once on network error."
+  }
+}

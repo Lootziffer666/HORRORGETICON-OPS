@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Kids Day Demo Seed Data and Smoke Tests: Extend the demo seed to include Kids Day configuration data, and add comprehensive smoke tests for all Kids Day API endpoints to the existing test suite.",
+  "status": "in_progress",
+  "steps": [
+    "Extend server/seed/seed.js to seed Kids Day configuration: add a kidsDay object to the settings with a sample config (enabled:true, date matching the event date, startTime:'10:00', endTime:'16:00', ageGroups, defaultIntensity:'leicht', mazeConfigs for all 5 mazes with varying intensities).",
+    "In the seed, create Kids Day specific checklist instances (using the new kidsday_sicherheit and kidsday_preshow types) for 2-3 mazes, with some items already checked off to show progress.",
+    "Add a new section 'Kids Day' to server/test/smoke.mjs following the existing section pattern. Test: GET /api/kidsday/config returns config, PATCH /api/kidsday/config updates it (management only), POST /api/kidsday/activate works and is reflected in GET /api/settings, POST /api/kidsday/deactivate resets mode, GET /api/kidsday/overview returns KPIs, GET /api/kidsday/mazes returns mazes with intensity, PATCH /api/kidsday/mazes/:id updates intensity, non-management gets 403 on write endpoints.",
+    "Ensure test count goes up by approximately 10-12 checks (section Kids Day should have meaningful coverage of the happy path and basic auth checks).",
+    "Also test that activating Kids Day publishes to the feed (check /api/feed after activation for a kids day related entry)."
+  ],
+  "acceptance_criteria": [
+    "Running with --demo loads Kids Day seed data (GET /api/kidsday/config returns seeded values)",
+    "npm test passes with the new Kids Day section showing all checks green",
+    "The new tests cover: config read, config write, activation, deactivation, overview, maze intensity, auth guards",
+    "Test count increases by at least 8 new checks",
+    "No regressions in existing 125+ tests"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm ALL tests pass including new Kids Day section"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

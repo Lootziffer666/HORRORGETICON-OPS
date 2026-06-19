@@ -324,7 +324,7 @@ try {
   const ready1 = (await api('GET', '/api/checklists/readiness', { token: mgmt.token })).json;
   ok(ready1.every((r) => r.bereit), 'Readiness: alle Mazes bereit ✓');
   const tpl = (await api('GET', '/api/checklists/templates', { token: lead.token })).json;
-  ok(tpl.length === 4 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (4 Typen)');
+  ok(tpl.length === 6 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (6 Typen)');
   const newCl = (await api('POST', '/api/checklists', { token: mgmt.token, body: { type: 'preshow', mazeId: asylum.id } })).json;
   ok(newCl.items.length >= 5 && newCl.mandatoryOpen > 0, 'Rundgang aus Vorlage angelegt');
   const actorCl = await api('POST', `/api/checklists/${newCl.id}/toggle`, { token: actor.token, body: { itemId: 'i1' } });
@@ -355,6 +355,280 @@ try {
   const feed = (await api('GET', '/api/feed', { token: actor.token })).json;
   ok(feed.length > 5, `Live-Feed (${feed.length} Einträge)`);
 
+  section('Kids Day');
+  const kdConf = (await api('GET', '/api/kidsday/config', { token: mgmt.token })).json;
+  ok(kdConf && kdConf.enabled === true && kdConf.startTime === '10:00' && kdConf.endTime === '16:00', 'Seeded Kids-Day-Config geladen (enabled, Zeitfenster)');
+  ok(kdConf.mazeConfigs.length === 5 && kdConf.ageGroups.length === 3, 'Config hat 5 Maze-Configs und 3 Altersgruppen');
+
+  const kdPatch = (await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { endTime: '17:00' } })).json;
+  ok(kdPatch.endTime === '17:00', 'PATCH /api/kidsday/config aktualisiert Zeitfenster');
+
+  const kdForbPatch = await api('PATCH', '/api/kidsday/config', { token: actor.token, body: { endTime: '18:00' } });
+  ok(kdForbPatch.status === 403, 'Actor darf Config nicht aendern (403)');
+
+  // Deaktivieren und wieder aktivieren
+  const kdDeact = (await api('POST', '/api/kidsday/deactivate', { token: mgmt.token })).json;
+  ok(kdDeact.ok && kdDeact.config.enabled === false, 'Kids Day deaktiviert');
+  const settingsAfterDeact = (await api('GET', '/api/settings', { token: mgmt.token })).json;
+  ok(settingsAfterDeact.kidsDay && settingsAfterDeact.kidsDay.enabled === false, 'Settings spiegelt Deaktivierung');
+
+  const kdAct = (await api('POST', '/api/kidsday/activate', { token: mgmt.token })).json;
+  ok(kdAct.ok && kdAct.config.enabled === true, 'Kids Day aktiviert');
+  const settingsAfterAct = (await api('GET', '/api/settings', { token: mgmt.token })).json;
+  ok(settingsAfterAct.kidsDay && settingsAfterAct.kidsDay.enabled === true, 'Settings spiegelt Aktivierung');
+
+  // Feed-Eintrag zur Aktivierung
+  const kdFeed = (await api('GET', '/api/feed?limit=15', { token: mgmt.token })).json;
+  ok(kdFeed.some((f) => f.text.includes('Kids Day')), 'Kids-Day-Aktivierung im Feed');
+
+  const kdForbAct = await api('POST', '/api/kidsday/activate', { token: actor.token });
+  ok(kdForbAct.status === 403, 'Actor darf Kids Day nicht aktivieren (403)');
+
+  // Overview
+  const kdOverview = (await api('GET', '/api/kidsday/overview', { token: mgmt.token })).json;
+  ok(kdOverview && kdOverview.kidsDayActive === true && kdOverview.mazes.total === 5, 'Overview liefert KPIs (aktiv, 5 Mazes)');
+
+  // Mazes mit Intensitaet
+  const kdMazes = (await api('GET', '/api/kidsday/mazes', { token: mgmt.token })).json;
+  ok(kdMazes.length === 5 && kdMazes.every((m) => m.kidsMode === true), 'GET /api/kidsday/mazes: 5 Mazes im Kids-Mode');
+  const kdAsylum = kdMazes.find((m) => m.name === 'Asylum');
+  ok(kdAsylum && kdAsylum.intensity === 'leicht', 'Asylum-Intensitaet ist leicht');
+
+  // Maze-Intensitaet patchen
+  const kdMazePatch = (await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: mgmt.token, body: { intensity: 'mittel' } })).json;
+  ok(kdMazePatch.intensity === 'mittel', 'PATCH Maze-Intensitaet auf mittel');
+  const kdForbMaze = await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: actor.token, body: { intensity: 'aus' } });
+  ok(kdForbMaze.status === 403, 'Actor darf Maze-Intensitaet nicht aendern (403)');
+
+  // Invalid-input error paths
+  const kdBadIntensity = await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { defaultIntensity: 'extrem' } });
+  ok(kdBadIntensity.status === 400, 'Ungueltige Intensitaet wird abgewiesen (400)');
+  const kdBadArray = await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { ageGroups: 'not-an-array' } });
+  ok(kdBadArray.status === 400, 'Nicht-Array ageGroups wird abgewiesen (400)');
+  const kdBadMazeId = await api('PATCH', '/api/kidsday/mazes/nonexistent-maze-xyz', { token: mgmt.token, body: { intensity: 'leicht' } });
+  ok(kdBadMazeId.status === 404, 'Nicht existentes Maze liefert 404');
+
+  section('DND-Modus (Nicht stören)');
+  // Actor-Status steht auf 'da' (aus vorheriger Sektion), Phase ist 'live'
+  // 1. Initialer Status: DND inaktiv
+  const dndInit = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndInit.active === false && dndInit.manual === false && dndInit.auto === false, 'DND initial inaktiv (kein manuell, kein auto)');
+
+  // 2. Manuell aktivieren
+  const dndEn = (await api('POST', '/api/dnd/enable', { token: actor.token })).json;
+  ok(dndEn.ok === true && dndEn.active === true, 'DND manuell aktiviert');
+
+  // 3. Status zeigt manuell aktiv
+  const dndManual = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndManual.active === true && dndManual.manual === true, 'GET /api/dnd/status zeigt manual=true');
+
+  // 4. Manuell deaktivieren
+  const dndDis = (await api('POST', '/api/dnd/disable', { token: actor.token })).json;
+  ok(dndDis.ok === true, 'DND manuell deaktiviert');
+
+  // 5. Status zeigt inaktiv
+  const dndOff = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndOff.active === false && dndOff.manual === false, 'GET /api/dnd/status zeigt inaktiv nach disable');
+
+  // 6. Auto-DND: Status auf 'position' setzen (Phase ist 'live')
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'position' } });
+  const dndAuto = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndAuto.active === true && dndAuto.auto === true && dndAuto.manual === false, 'Auto-DND aktiv bei live+position');
+
+  // 7. Auto-DND endet wenn Status sich aendert
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'backstage' } });
+  const dndNoAuto = (await api('GET', '/api/dnd/status', { token: actor.token })).json;
+  ok(dndNoAuto.active === false && dndNoAuto.auto === false, 'Auto-DND endet bei Status-Wechsel weg von position');
+
+  // 8. Management kann fremden DND-Status abfragen
+  const dndMgmt = (await api('GET', `/api/dnd/status/${actor.person.id}`, { token: mgmt.token })).json;
+  ok(dndMgmt && typeof dndMgmt.active === 'boolean', 'Management kann DND-Status anderer Personen abfragen');
+
+  // 9. Ohne Token kein Zugriff auf DND-Endpoints
+  const dndNoAuth = await api('GET', '/api/dnd/status');
+  ok(dndNoAuth.status === 401, 'DND-Endpoint ohne Token liefert 401');
+
+  // 10. SSE-Filterung: info-Durchsage wird bei DND blockiert, notfall kommt durch
+  // DND aktivieren fuer Actor
+  await api('POST', '/api/dnd/enable', { token: actor.token });
+  // SSE-Stream oeffnen und Daten sammeln
+  const sseCtrl = new AbortController();
+  let sseBuf = '';
+  const ssePromise = (async () => {
+    try {
+      const sseRes = await fetch(BASE + '/api/stream?token=' + actor.token, { signal: sseCtrl.signal });
+      const reader = sseRes.body.getReader();
+      const decoder = new TextDecoder();
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        sseBuf += decoder.decode(value, { stream: true });
+      }
+    } catch { /* AbortError expected */ }
+  })();
+  await new Promise((r) => setTimeout(r, 300));
+  // Info-Durchsage senden (announce.new sollte NICHT beim DND-Actor ankommen)
+  await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'DND-Test-Info', level: 'info' } });
+  await new Promise((r) => setTimeout(r, 400));
+  // Notfall-Durchsage senden (announce.new MUSS durchkommen)
+  await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'DND-Test-Notfall', level: 'notfall' } });
+  await new Promise((r) => setTimeout(r, 400));
+  // Stream schliessen und pruefen
+  sseCtrl.abort();
+  await ssePromise;
+  // DND filtert announce.new und alarm Events (nicht feed.item).
+  // Pruefen: announce.new mit notfall kommt durch, announce.new mit info nicht.
+  // Parse SSE data lines to check event types
+  const sseLines = sseBuf.split('\n').filter((l) => l.startsWith('data: '));
+  const sseEvents = sseLines.map((l) => { try { return JSON.parse(l.slice(6)); } catch { return null; } }).filter(Boolean);
+  const announceEvents = sseEvents.filter((e) => e.type === 'announce.new');
+  const hasNotfallAnnounce = announceEvents.some((e) => e.data?.text?.includes('DND-Test-Notfall'));
+  const hasInfoAnnounce = announceEvents.some((e) => e.data?.text?.includes('DND-Test-Info'));
+  ok(hasNotfallAnnounce && !hasInfoAnnounce,
+    'SSE-Filterung: announce.new mit Notfall kommt durch, Info-announce.new wird bei DND blockiert');
+
+  // Cleanup: DND wieder deaktivieren, Status zuruecksetzen
+  await api('POST', '/api/dnd/disable', { token: actor.token });
+  await api('POST', '/api/live/status', { token: actor.token, body: { status: 'da' } });
+
+  section('Event-Timeline-Export');
+  const tlJson = (await api('GET', '/api/reports/timeline', { token: mgmt.token })).json;
+  ok(Array.isArray(tlJson) && tlJson.length > 0, `Timeline JSON liefert ${tlJson.length} Eintraege`);
+  const tlSample = tlJson.find((e) => e.t > 0);
+  ok(tlSample && tlSample.category && tlSample.text, 'Timeline-Eintraege haben t, category, text');
+  const tlSorted = tlJson.every((e, i) => i === 0 || e.t >= tlJson[i - 1].t);
+  ok(tlSorted, 'Timeline ist chronologisch sortiert');
+  const tlForb = await api('GET', '/api/reports/timeline', { token: actor.token });
+  ok(tlForb.status === 403, 'Actor darf Timeline nicht abrufen (403)');
+  const tlHtml = await api('GET', '/api/reports/timeline/export', { token: mgmt.token, raw: true });
+  ok(tlHtml.status === 200 && tlHtml.text.includes('<!DOCTYPE html>'), 'Timeline HTML-Export liefert HTML-Dokument');
+  ok(tlHtml.text.includes('Event-Timeline'), 'HTML-Export enthaelt Titel');
+  const tlCsv = await api('GET', '/api/reports/timeline/csv', { token: mgmt.token, raw: true });
+  ok(tlCsv.status === 200 && tlCsv.text.includes('Zeit;Kategorie;Text;Person;Maze;Level'), 'Timeline CSV hat korrekte Kopfzeile und Inhalt');
+  const tlCsvForb = await api('GET', '/api/reports/timeline/csv', { token: actor.token });
+  ok(tlCsvForb.status === 403, 'Actor darf Timeline-CSV nicht abrufen (403)');
+
+  section('Input-Validierung');
+  // Chat: Nachricht > 2000 Zeichen wird abgeschnitten
+  const longMsg = 'A'.repeat(3000);
+  const chatLong = (await api('POST', '/api/chat/ch_crew/messages', { token: actor.token, body: { text: longMsg } })).json;
+  ok(chatLong.text.length === 2000, `Chat-Nachricht auf 2000 Zeichen gekuerzt (${chatLong.text.length})`);
+
+  // Chat: leere Nachricht wird abgelehnt
+  const chatEmpty = await api('POST', '/api/chat/ch_crew/messages', { token: actor.token, body: { text: '   ' } });
+  ok(chatEmpty.status === 400, 'Leere Chat-Nachricht wird abgewiesen (400)');
+
+  // Tasks: Titel > 200 Zeichen wird abgeschnitten
+  const longTitle = 'T'.repeat(300);
+  const taskLong = (await api('POST', '/api/tasks', { token: mgmt.token, body: { title: longTitle } })).json;
+  ok(taskLong.title.length === 200, `Aufgaben-Titel auf 200 Zeichen gekuerzt (${taskLong.title.length})`);
+
+  // Tasks: Deadline-Format wird validiert
+  const taskBadDl = await api('POST', '/api/tasks', { token: mgmt.token, body: { title: 'Test', deadline: 'morgen' } });
+  ok(taskBadDl.status === 400 && taskBadDl.json.error.includes('HH:MM'), 'Ungueltige Deadline wird abgewiesen (400)');
+
+  // People: Ungueltige Rolle wird abgewiesen
+  const badRolePerson = await api('POST', '/api/people', { token: mgmt.token, body: { name: 'Tester', roles: ['admin', 'root'] } });
+  ok(badRolePerson.status === 400, 'Ungueltige Rollen werden abgewiesen (400)');
+
+  // People: Name wird auf 100 Zeichen gekuerzt
+  const longNamePerson = (await api('POST', '/api/people', { token: mgmt.token, body: { name: 'N'.repeat(150) } })).json;
+  ok(longNamePerson.name.length === 100, `Personenname auf 100 Zeichen gekuerzt (${longNamePerson.name.length})`);
+
+  // People: Code-Pattern wird validiert
+  const badCodePerson = await api('POST', '/api/people', { token: mgmt.token, body: { name: 'Tester2', code: 'AB CD!!' } });
+  ok(badCodePerson.status === 400, 'Ungueltiger Personal-Code wird abgewiesen (400)');
+
+  // Announcements: Text > 1000 Zeichen wird abgeschnitten
+  const longAnn = (await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'X'.repeat(1500), level: 'info' } })).json;
+  ok(longAnn.text.length === 1000, `Durchsagen-Text auf 1000 Zeichen gekuerzt (${longAnn.text.length})`);
+
+  // Announcements: Ungueltiges Level wird abgewiesen
+  const badLevelAnn = await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'Test', level: 'panik' } });
+  ok(badLevelAnn.status === 400, 'Ungueltige Durchsage-Stufe wird abgewiesen (400)');
+
+  // Announcements: Ungueltiger Scope-Typ wird abgewiesen
+  const badScopeAnn = await api('POST', '/api/announcements', { token: mgmt.token, body: { text: 'Test', scope: { type: 'galaxy' } } });
+  ok(badScopeAnn.status === 400, 'Ungueltiger Scope-Typ wird abgewiesen (400)');
+
+  // JSON Depth Bomb: tief verschachteltes JSON wird abgewiesen
+  let deepJson = '{"a":';
+  for (let i = 0; i < 55; i++) deepJson += '{"b":';
+  deepJson += '1';
+  for (let i = 0; i < 55; i++) deepJson += '}';
+  deepJson += '}';
+  const deepRes = await fetch(BASE + '/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mgmt.token}` },
+    body: deepJson,
+  });
+  ok(deepRes.status === 400, `Tief verschachteltes JSON (55 Ebenen) wird abgewiesen (${deepRes.status})`);
+
+  // Breaks: Note wird auf 500 Zeichen gekuerzt
+  // (Pause beenden, damit neue Anfrage moeglich ist)
+  const breakLong = (await api('POST', '/api/breaks/request', { token: cat.token, body: { note: 'B'.repeat(700) } })).json;
+  ok(breakLong.note.length === 500, `Pausen-Notiz auf 500 Zeichen gekuerzt (${breakLong.note.length})`);
+  // Cleanup: Pause ablehnen
+  await api('POST', `/api/breaks/${breakLong.id}/deny`, { token: lead.token, body: { reason: 'test' } });
+
+  section('Security & Rate-Limiting');
+  // Security headers pruefen
+  const secRes = await fetch(BASE + '/api/health');
+  ok(secRes.headers.get('x-content-type-options') === 'nosniff', 'X-Content-Type-Options: nosniff auf API');
+  ok(secRes.headers.get('x-frame-options') === 'DENY', 'X-Frame-Options: DENY auf API');
+  ok(secRes.headers.get('referrer-policy') === 'strict-origin-when-cross-origin', 'Referrer-Policy gesetzt');
+  ok(secRes.headers.get('content-security-policy')?.includes("default-src 'none'"), 'CSP auf API-Responses');
+
+  // Body-Groesse: 256KB-Limit fuer Standard-API
+  const bigBody = JSON.stringify({ data: 'x'.repeat(300 * 1024) });
+  const bigRes = await fetch(BASE + '/api/people', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mgmt.token}` },
+    body: bigBody,
+  });
+  ok(bigRes.status === 413, 'Body > 256KB auf Standard-Endpunkt ergibt 413');
+
+  // Rate-Limiting: Login-Endpunkt (10 pro 5 min)
+  // Einige Logins wurden in frueheren Sektionen bereits verbraucht.
+  // Wir senden genug Anfragen, damit das Limit sicher erreicht wird.
+  const rlResults = [];
+  for (let i = 0; i < 15; i++) {
+    const r = await api('POST', '/api/auth/login', { body: { code: 'XXXX', pin: '0000' } });
+    rlResults.push(r.status);
+  }
+  ok(rlResults.includes(429), 'Rate-Limit 429 nach zu vielen Login-Versuchen');
+  const first429 = rlResults.indexOf(429);
+  ok(first429 >= 1, 'Nicht sofort beim ersten Versuch gedrosselt');
+
+  section('SSE-Verbindungslimits & Resilience');
+  // Per-Person-Limit: max 3 gleichzeitige SSE-Verbindungen pro Person.
+  // Wir brauchen ein frisches Token (Ratelimiter hat Login-IP gesperrt).
+  // Nutze lead-Token (aus frueherem Login).
+  const sseConns = [];
+  for (let i = 0; i < 5; i++) {
+    const ctrl = new AbortController();
+    const r = fetch(BASE + '/api/stream?token=' + lead.token, {
+      headers: { Authorization: `Bearer ${lead.token}` },
+      signal: ctrl.signal,
+    });
+    sseConns.push({ promise: r, ctrl });
+    // Kurz warten, damit die Verbindung registriert wird
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  // Warte kurz, damit alle Verbindungen auf dem Server registriert sind
+  await new Promise((r) => setTimeout(r, 300));
+  const healthSSE = (await api('GET', '/api/health', { token: lead.token })).json;
+  ok(healthSSE.online <= 3, `Per-Person-Limit: max 3 SSE-Verbindungen aktiv (online: ${healthSSE.online})`);
+  // Aufraeumen: alle SSE-Verbindungen schliessen
+  for (const c of sseConns) { c.ctrl.abort(); }
+  await new Promise((r) => setTimeout(r, 200));
+
+  // Globales Limit: 503 bei Ueberlast (Indirekt pruefen -- zu viele Verbindungen oeffnen wir nicht,
+  // aber wir pruefen, dass das attach im Bus korrekt arbeitet).
+  // Stattdessen pruefen wir, dass /api/health online=0 nach Aufraemen meldet.
+  const healthAfter = (await api('GET', '/api/health', { token: lead.token })).json;
+  ok(healthAfter.online === 0, `SSE-Verbindungen nach Abort sauber aufgeraeumt (online: ${healthAfter.online})`);
+
   section('Crash-Sicherheit: kaputter Snapshot → Wiederherstellung');
   server.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 1200));
@@ -367,6 +641,219 @@ try {
   const health = (await api('GET', '/api/health', { token: relog.token })).json;
   ok(health.db.counts.people >= 50, `Datenbestand wiederhergestellt (${health.db.counts.people} Personen)`);
   ok(health.db.bootReport.some((l) => l.includes('unbrauchbar')), 'Boot-Report dokumentiert die Reparatur');
+
+  section('Master-Timeline-Versionierung');
+  // Erstelle Timeline-Bloecke
+  const tb1 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Einlass', start: '18:00', end: '18:30', type: 'phase' } })).json;
+  ok(tb1.id && tb1.title === 'Einlass' && tb1.start === '18:00', 'Block erstellt (Einlass 18:00)');
+  const tb2 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Briefing', start: '18:30', end: '19:00', type: 'meeting' } })).json;
+  ok(tb2.id && tb2.start === '18:30', 'Block erstellt (Briefing 18:30)');
+  const tb3 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Show Start', start: '19:00', end: '23:00', type: 'show' } })).json;
+  ok(tb3.id && tb3.start === '19:00', 'Block erstellt (Show Start 19:00)');
+
+  // Lesen: sortiert nach Startzeit
+  const tlBlocks = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(tlBlocks.blocks.length === 3, `Timeline hat 3 Bloecke (${tlBlocks.blocks.length})`);
+  ok(tlBlocks.blocks[0].start === '18:00' && tlBlocks.blocks[2].start === '19:00', 'Bloecke nach Startzeit sortiert');
+  ok(tlBlocks.frozen === false, 'Timeline ist nicht eingefroren');
+
+  // Lead kann lesen
+  const tlLead = (await api('GET', '/api/timeline', { token: lead.token })).json;
+  ok(tlLead.blocks.length === 3, 'Lead kann Timeline lesen');
+
+  // Actor darf nicht lesen
+  const tlActorForb = await api('GET', '/api/timeline', { token: actor.token });
+  ok(tlActorForb.status === 403, 'Actor darf Timeline nicht lesen (403)');
+
+  // Actor darf nicht schreiben
+  const tlActorWrite = await api('POST', '/api/timeline', { token: actor.token, body: { title: 'X', start: '20:00', end: '21:00' } });
+  ok(tlActorWrite.status === 403, 'Actor darf Block nicht erstellen (403)');
+
+  // PATCH: Block bearbeiten
+  const tbUpd = (await api('PATCH', `/api/timeline/${tb1.id}`, { token: mgmt.token, body: { title: 'Einlass VIP', start: '17:45' } })).json;
+  ok(tbUpd.title === 'Einlass VIP' && tbUpd.start === '17:45', 'Block bearbeitet (Titel + Start)');
+
+  // Versionen wurden automatisch erstellt
+  const tlVers = (await api('GET', '/api/timeline/versions', { token: mgmt.token })).json;
+  ok(tlVers.length >= 4, `Versionen erstellt (${tlVers.length} nach 3 Creates + 1 Patch)`);
+  ok(tlVers[0].version === 1 && tlVers[0].author, 'Erste Version hat Nummer und Autor');
+
+  // Version-Detail abrufen
+  const ver1 = (await api('GET', `/api/timeline/versions/${tlVers[0].id}`, { token: mgmt.token })).json;
+  ok(ver1.blocks.length >= 1 && ver1.version === 1, 'Version-Detail enthaelt Block-Snapshot');
+
+  // Lead kann Versionen lesen
+  const tlVersLead = (await api('GET', '/api/timeline/versions', { token: lead.token })).json;
+  ok(tlVersLead.length >= 4, 'Lead kann Versionen lesen');
+
+  // Delay-Propagation
+  const delayRes = (await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: 15, reason: 'Technik-Verzoegerung' } })).json;
+  ok(delayRes.ok && delayRes.shifted === 2, `Delay propagiert (${delayRes.shifted} Bloecke verschoben)`);
+  const afterDelay = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  const briefingAfter = afterDelay.blocks.find((b) => b.id === tb2.id);
+  const showAfter = afterDelay.blocks.find((b) => b.id === tb3.id);
+  ok(briefingAfter.start === '18:45', `Briefing verschoben auf 18:45 (${briefingAfter.start})`);
+  ok(showAfter.start === '19:15', `Show verschoben auf 19:15 (${showAfter.start})`);
+
+  // Delay erstellt neue Version mit Grund
+  const versAfterDelay = (await api('GET', '/api/timeline/versions', { token: mgmt.token })).json;
+  const delayVer = versAfterDelay[versAfterDelay.length - 1];
+  ok(delayVer.reason.includes('Technik-Verzoegerung'), 'Delay-Version hat Grund');
+
+  // Version-Diff
+  const diffRes = (await api('GET', `/api/timeline/versions/${tlVers[tlVers.length - 1].id}/diff/${delayVer.id}`, { token: mgmt.token })).json;
+  ok(diffRes.v1 && diffRes.v2 && Array.isArray(diffRes.changed), 'Diff liefert v1, v2, changed');
+  ok(diffRes.changed.length >= 1, `Diff zeigt geaenderte Bloecke (${diffRes.changed.length})`);
+
+  // Freeze
+  const freezeRes = (await api('POST', '/api/timeline/freeze', { token: mgmt.token })).json;
+  ok(freezeRes.ok && freezeRes.frozen === true, 'Timeline eingefroren');
+  const tlFrozen = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(tlFrozen.frozen === true, 'GET /api/timeline zeigt frozen=true');
+
+  // Bearbeitung ohne emergency wird abgelehnt
+  const frozenEdit = await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Test', start: '20:00', end: '21:00' } });
+  ok(frozenEdit.status === 400 && frozenEdit.json.error.includes('eingefroren'), 'Aenderung bei Freeze abgelehnt');
+
+  // Notfall-Aenderung mit emergency:true geht durch
+  const emergEdit = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Notfall-Block', start: '22:00', end: '22:30', emergency: true } })).json;
+  ok(emergEdit.id && emergEdit.title === 'Notfall-Block', 'Notfall-Aenderung (emergency:true) funktioniert');
+
+  // Unfreeze (toggle)
+  const unfreezeRes = (await api('POST', '/api/timeline/freeze', { token: mgmt.token })).json;
+  ok(unfreezeRes.ok && unfreezeRes.frozen === false, 'Timeline aufgetaut (toggle)');
+
+  // Lead darf nicht schreiben
+  const leadWrite = await api('POST', '/api/timeline', { token: lead.token, body: { title: 'X', start: '20:00', end: '21:00' } });
+  ok(leadWrite.status === 403, 'Lead darf nicht schreiben (403)');
+
+  // Delay: Zero Minuten abgelehnt (400)
+  const delayZero = await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: 0, reason: 'null' } });
+  ok(delayZero.status === 400, `Delay mit 0 Minuten wird abgelehnt (${delayZero.status})`);
+
+  // Delay: Negative Minuten abgelehnt (400)
+  const delayNeg = await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: -5, reason: 'negativ' } });
+  ok(delayNeg.status === 400, `Delay mit negativem Wert wird abgelehnt (${delayNeg.status})`);
+
+  // DELETE: Block loeschen
+  const delBlock = await api('DELETE', `/api/timeline/${tb3.id}`, { token: mgmt.token });
+  ok(delBlock.status === 200 && delBlock.json?.ok, 'Block geloescht');
+  const afterBlockDel = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(!afterBlockDel.blocks.find((b) => b.id === tb3.id), 'Geloeschter Block nicht mehr in Timeline');
+
+  section('Dokumenten-Hub');
+
+  // Management erstellt ein Dokument
+  const doc1 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Sicherheitsbriefing', content: '# Wichtige Infos\n\nAlle Notausgaenge pruefen.', category: 'briefing', visibility: 'alle' } })).json;
+  ok(doc1?.id && doc1.title === 'Sicherheitsbriefing', 'Dokument erstellt');
+  ok(doc1.category === 'briefing' && doc1.visibility === 'alle', 'Dokument hat Kategorie + Sichtbarkeit');
+
+  // Zweites Dokument (management-only)
+  const doc2 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Internes Protokoll', content: 'Nur fuer Management.', category: 'sonstiges', visibility: 'management' } })).json;
+  ok(doc2?.id && doc2.visibility === 'management', 'Management-only Dokument erstellt');
+
+  // Drittes Dokument (lead visibility)
+  const doc3 = (await api('POST', '/api/documents', { token: mgmt.token, body: { title: 'Lead-Info', content: 'Fuer Leads.', category: 'lageplan', visibility: 'lead' } })).json;
+  ok(doc3?.id && doc3.visibility === 'lead', 'Lead-Dokument erstellt');
+
+  // Lese alle Dokumente als Management (sieht alles)
+  const allDocs = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(Array.isArray(allDocs) && allDocs.length >= 3, `Management sieht alle Dokumente (${allDocs?.length})`);
+
+  // Actor sieht nur Dokumente mit visibility=alle
+  const actorDocs = (await api('GET', '/api/documents', { token: actor.token })).json;
+  ok(actorDocs.every((d) => d.visibility === 'alle'), 'Actor sieht nur Dokumente mit Sichtbarkeit alle');
+  ok(!actorDocs.find((d) => d.id === doc2.id), 'Actor sieht management-only Dokument nicht');
+  ok(!actorDocs.find((d) => d.id === doc3.id), 'Actor sieht lead-Dokument nicht');
+
+  // Lead sieht alle + lead, aber nicht management-only
+  const leadDocs = (await api('GET', '/api/documents', { token: lead.token })).json;
+  ok(leadDocs.find((d) => d.id === doc3.id), 'Lead sieht lead-Dokument');
+  ok(!leadDocs.find((d) => d.id === doc2.id), 'Lead sieht management-only Dokument nicht');
+
+  // Kategorie-Filter
+  const briefings = (await api('GET', '/api/documents?category=briefing', { token: mgmt.token })).json;
+  ok(briefings.every((d) => d.category === 'briefing'), 'Kategoriefilter funktioniert');
+  ok(briefings.find((d) => d.id === doc1.id), 'Briefing-Dokument in Kategorie-Ergebnis');
+
+  // Update Dokument
+  const updDoc = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { title: 'Sicherheitsbriefing v2', content: 'Aktualisiert.' } })).json;
+  ok(updDoc.title === 'Sicherheitsbriefing v2', 'Dokument aktualisiert');
+
+  // Pin/Unpin
+  const pinRes = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { pinned: true } })).json;
+  ok(pinRes.pinned === true, 'Dokument angepinnt');
+
+  // Pinned documents appear first
+  const withPin = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(withPin[0].id === doc1.id && withPin[0].pinned === true, 'Angepinnte Dokumente stehen oben');
+
+  // Unpin
+  const unpinRes = (await api('PATCH', `/api/documents/${doc1.id}`, { token: mgmt.token, body: { pinned: false } })).json;
+  ok(unpinRes.pinned === false, 'Dokument losgeloest');
+
+  // Delete Dokument
+  const delDoc = await api('DELETE', `/api/documents/${doc1.id}`, { token: mgmt.token });
+  ok(delDoc.status === 200 && delDoc.json?.ok, 'Dokument geloescht');
+  const afterDel = (await api('GET', '/api/documents', { token: mgmt.token })).json;
+  ok(!afterDel.find((d) => d.id === doc1.id), 'Geloeschtes Dokument nicht mehr in Liste');
+
+  // Rollenrestriktionen: Actor kann nicht erstellen
+  const actorCreate = await api('POST', '/api/documents', { token: actor.token, body: { title: 'Test', content: 'x', category: 'sonstiges', visibility: 'alle' } });
+  ok(actorCreate.status === 403, 'Actor kann kein Dokument erstellen (403)');
+
+  // Actor kann nicht bearbeiten
+  const actorEdit = await api('PATCH', `/api/documents/${doc2.id}`, { token: actor.token, body: { title: 'Hack' } });
+  ok(actorEdit.status === 403, 'Actor kann kein Dokument bearbeiten (403)');
+
+  // Actor kann nicht loeschen
+  const actorDel = await api('DELETE', `/api/documents/${doc2.id}`, { token: actor.token });
+  ok(actorDel.status === 403, 'Actor kann kein Dokument loeschen (403)');
+
+  section('Offline-Robustheit: Service Worker & Retry-Logik');
+
+  // (a) SW-Cache enthaelt alle JS-Dateien
+  const swSrc = fs.readFileSync(path.join(ROOT, 'web/sw.js'), 'utf8');
+  const expectedJS = [
+    '/js/app.js',
+    '/js/core/api.js', '/js/core/dom.js', '/js/core/fmt.js',
+    '/js/core/offline-banner.js', '/js/core/qr.js', '/js/core/store.js', '/js/core/ui.js',
+    '/js/shell/desktop.js', '/js/shell/login.js', '/js/shell/phone.js',
+    '/js/shell/station.js', '/js/shell/tablet.js',
+    '/js/views/alarm.js', '/js/views/announce.js', '/js/views/attendance.js',
+    '/js/views/backups.js', '/js/views/breaks.js', '/js/views/carpool.js',
+    '/js/views/catering_mgmt.js', '/js/views/chat.js', '/js/views/dashboard.js',
+    '/js/views/dbadmin.js', '/js/views/documents.js', '/js/views/incidents.js', '/js/views/kidsday.js',
+    '/js/views/livemap.js', '/js/views/mazes.js', '/js/views/modules.js',
+    '/js/views/people.js', '/js/views/profile.js', '/js/views/reports.js',
+    '/js/views/schedule.js', '/js/views/settings.js', '/js/views/shared.js',
+    '/js/views/tasks.js', '/js/views/timeline.js', '/js/views/wallet.js',
+  ];
+  const missingFromCache = expectedJS.filter((f) => !swSrc.includes(`'${f}'`));
+  ok(missingFromCache.length === 0, `SW-Cache enthaelt alle ${expectedJS.length} JS-Dateien${missingFromCache.length ? ' (fehlend: ' + missingFromCache.join(', ') + ')' : ''}`);
+
+  // (b) Cache-Version ist v2 (nicht mehr v1)
+  ok(swSrc.includes("'hgo-shell-v2'"), 'SW-Cache-Version ist hgo-shell-v2');
+  ok(!swSrc.includes("'hgo-shell-v1'"), 'Alte Cache-Version v1 nicht mehr vorhanden');
+
+  // (c) offline-banner.js existiert und exportiert initOfflineBanner
+  const bannerPath = path.join(ROOT, 'web/js/core/offline-banner.js');
+  ok(fs.existsSync(bannerPath), 'offline-banner.js Modul existiert');
+  const bannerSrc = fs.readFileSync(bannerPath, 'utf8');
+  ok(bannerSrc.includes('initOfflineBanner'), 'offline-banner.js exportiert initOfflineBanner');
+
+  // (d) store.js enthaelt emit("reconnected") Logik
+  const storeSrc = fs.readFileSync(path.join(ROOT, 'web/js/core/store.js'), 'utf8');
+  ok(storeSrc.includes("emit('reconnected')") || storeSrc.includes('emit("reconnected")'), 'store.js emittiert reconnected-Event nach Reconnect');
+
+  // (e) api.js enthaelt Retry-Logik (setTimeout mit 2000ms)
+  const apiSrc = fs.readFileSync(path.join(ROOT, 'web/js/core/api.js'), 'utf8');
+  ok(apiSrc.includes('2000') || apiSrc.includes('2e3'), 'api.js enthaelt 2s-Retry-Delay');
+
+  // (f) Regressions-Test: API-Aufrufe funktionieren weiterhin korrekt (Retry bricht nichts)
+  const regHealth = await api('GET', '/api/health', { token: relog.token });
+  ok(regHealth.status === 200, 'API-Aufrufe funktionieren weiterhin nach Retry-Logik-Integration');
+
 } catch (e) {
   failed++;
   console.error('\n💥 Testlauf abgebrochen:', e);

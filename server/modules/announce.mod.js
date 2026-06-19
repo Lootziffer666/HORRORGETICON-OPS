@@ -62,10 +62,12 @@ export default {
     });
 
     post('/api/announcements', async (ctx) => {
-      const text = need(ctx.body, 'text').slice(0, 500);
+      const text = need(ctx.body, 'text').slice(0, 1000);
       const level = ctx.body.level || 'info';
       if (!LEVELS.includes(level)) bad('Stufe muss info, wichtig oder notfall sein');
       const scope = ctx.body.scope || { type: 'all' };
+      if (typeof scope !== 'object' || scope === null || !scope.type) bad('Scope muss ein Objekt mit type sein');
+      if (!['all', 'maze', 'positions'].includes(scope.type)) bad('Scope-Typ muss all, maze oder positions sein');
       const aud = audiencePersonIds(scope);
       const scopeLabel = scope.type === 'all' ? 'an alle'
         : scope.type === 'maze' ? `nur ${db.get('mazes', scope.mazeId)?.name || 'Maze'}`

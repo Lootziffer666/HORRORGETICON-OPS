@@ -1,0 +1,31 @@
+{
+  "project_type": "Node.js zero-dependency event management platform (server + PWA)",
+  "language": "JavaScript (ES modules, Node.js >= 18)",
+  "build_system": "No build step. Server runs directly with node. PWA is vanilla JS (no bundler).",
+  "test_framework": "Custom end-to-end smoke tests (server/test/smoke.mjs) - 143 checks against a live server instance. Optional Playwright browser E2E (server/test/ui.e2e.mjs).",
+  "build_command": "No build needed - validate with: node --check server/main.js",
+  "test_command": "npm test",
+  "verification_instructions": "1. Run npm test (143 API checks). 2. Spot check: node server/main.js --demo, verify http://localhost:8787 responds. 3. Check all modules load via GET /api/health.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "No npm install needed (zero dependencies). Just: node server/main.js --demo",
+  "environment_constraints": "Node.js v22 available. No external database. No Docker needed. Network mode may restrict external access but all tests run locally.",
+  "contribution_requirements": "Zero npm dependencies policy. ES modules throughout. German UI strings. Every mutation goes through db.put/patch/del (journal). Modules follow the *.mod.js pattern with { name, title, version, routes(r, ctx) }. Tests are inline checks in smoke.mjs.",
+  "key_patterns": "Circuit-breaker per module. SSE for real-time (Bus.publish). Auth via Bearer token (18h sessions). ApiError for controlled HTTP errors. Feed for audit trail. Roles: management, lead, actor, springer, catering. DB: append-only journal + snapshot with SHA-256.",
+  "relevant_files": [
+    "server/main.js",
+    "server/kernel/http.js",
+    "server/kernel/kernel.js",
+    "server/kernel/auth.js",
+    "server/kernel/bus.js",
+    "server/kernel/db.js",
+    "server/kernel/util.js",
+    "server/modules/live.mod.js",
+    "server/modules/incidents.mod.js",
+    "server/modules/settings.mod.js",
+    "server/modules/kidsday.mod.js",
+    "server/test/smoke.mjs",
+    "web/js/shell/desktop.js",
+    "web/js/views/kidsday.js"
+  ],
+  "directory_structure": "server/kernel/ - core infrastructure (DB, HTTP, Auth, Bus, Kernel). server/modules/ - 19 feature modules (*.mod.js). server/test/ - smoke.mjs (143 checks), ui.e2e.mjs (47 browser). server/seed/ - demo data. web/ - PWA frontend (vanilla JS, no build). web/js/core/ - DOM helpers, API, store, QR. web/js/shell/ - desktop/tablet/phone/station shells. web/js/views/ - all feature views. kmp/ - Kotlin Multiplatform shell. docs/ - architecture + runbook."
+}

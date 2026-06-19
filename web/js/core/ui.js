@@ -1,5 +1,6 @@
 // UI-Bausteine: Toasts, Modals/Sheets, Bestätigung, Modul-Aus-Fallback
 import { h, ic, mount } from './dom.js';
+import { on } from './store.js';
 
 let toastWrap = null;
 export function toast(msg, tone = '') {
@@ -77,6 +78,7 @@ export function guardedView(container, loader) {
       else mount(container, errorCard(e.message, run));
     }
   };
+  const unsub = on('reconnected', () => { if (alive) run(); });
   run();
-  return { refresh: run, stop: () => { alive = false; } };
+  return { refresh: run, stop: () => { alive = false; unsub(); } };
 }

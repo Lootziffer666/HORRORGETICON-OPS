@@ -176,11 +176,13 @@ async function besetzen(pos, refresh) {
 
 // ── Mehr: Rundgänge + Übergabeprotokoll + Pausenplan ──
 async function leadMehrView({ onCleanup, refresh }) {
-  const [plan, checklists] = await Promise.all([
+  const [plan, checklists, pinnedDocs] = await Promise.all([
     get('/api/schedule/breakplan'),
     get(`/api/checklists${myMazeId ? `?maze=${myMazeId}` : ''}`),
+    get('/api/documents'),
   ]);
-  onCleanup(on(['checklists'], refresh));
+  onCleanup(on(['checklists', 'documents'], refresh));
+  const pinned = pinnedDocs.filter((d) => d.pinned);
   return h('div', { class: 'col scroll-y', style: { gap: '14px', padding: '14px' } },
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
       h('button', { class: 'btn sm orange', onclick: () => announceSheet({ mazeId: myMazeId }) }, ic('mega', 14), 'Durchsage an meine Maze'),
@@ -189,13 +191,25 @@ async function leadMehrView({ onCleanup, refresh }) {
 
     h('div', { class: 'panel' },
       h('div', { class: 'panel-h' }, ic('check', 16, { color: 'var(--fg-muted)' }),
-        h('span', { class: 't' }, 'Rundgänge & Checklisten'),
+        h('span', { class: 't' }, 'Rundgaenge & Checklisten'),
         checklists.some((c) => c.mandatoryOpen > 0)
           ? badge('warn', `${checklists.reduce((s, c) => s + c.mandatoryOpen, 0)} Pflicht offen`)
-          : badge('ok', 'bereit ✓', { dot: true })),
+          : badge('ok', 'bereit \u2713', { dot: true })),
       h('div', { class: 'panel-b', style: { gap: '12px' } },
-        checklists.length === 0 ? h('span', { class: 'sub' }, 'Keine Rundgänge für deine Maze — das Management legt sie unter Aufgaben → Checklisten an.')
+        checklists.length === 0 ? h('span', { class: 'sub' }, 'Keine Rundgaenge fuer deine Maze \u2014 das Management legt sie unter Aufgaben \u2192 Checklisten an.')
           : checklists.map((c) => checklistRow(c, refresh)))),
+
+    h('div', { class: 'panel' },
+      h('div', { class: 'panel-h' }, ic('doc', 16, { color: 'var(--fg-muted)' }),
+        h('span', { class: 't' }, 'Dokumente'),
+        pinned.length > 0 ? badge('warn', `${pinned.length} angepinnt`) : badge('plain', `${pinnedDocs.length} gesamt`)),
+      h('div', { class: 'panel-b', style: { gap: '8px' } },
+        pinnedDocs.length === 0 ? h('span', { class: 'sub' }, 'Keine Dokumente vorhanden.')
+          : (pinned.length > 0 ? pinned : pinnedDocs.slice(0, 5)).map((doc) =>
+            h('div', { class: 'row', style: { gap: '8px', alignItems: 'center', padding: '4px 0' } },
+              ic(doc.pinned ? 'pin' : 'doc', 14, { color: doc.pinned ? '#b8901c' : 'var(--fg-muted)' }),
+              h('span', { style: { fontSize: '13px', fontWeight: doc.pinned ? 700 : 400 } }, doc.title),
+              badge('plain', doc.category))))),
 
     h('div', { class: 'panel' },
       h('div', { class: 'panel-h' }, ic('doc', 16, { color: 'var(--fg-muted)' }),

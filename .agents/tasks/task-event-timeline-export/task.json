@@ -1,0 +1,7 @@
+{
+  "task_id": "task-event-timeline-export",
+  "task_description": "Implement a comprehensive Event-Timeline-Export feature with JSON, HTML, and CSV endpoints, frontend UI, role-based access (management only), and smoke tests.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}

@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Kids Day Server Module: Create a new server module `kidsday.mod.js` that manages Kids Day event configuration and operations. A Kids Day is a toned-down family-friendly daytime variant of the scare event. The module should handle: (1) Kids Day settings per event (enabled/disabled, date, time window, age groups, intensity levels per maze, special rules), (2) A Kids Day mode flag in settings that signals the entire system this is a Kids Day run (affecting what actors do, which mazes are active, intensity settings), (3) Kids Day-specific checklists (child safety, content appropriateness, parent briefing stations, first aid readiness for children), (4) A Leitstand overview endpoint providing Kids Day KPIs (child groups through, wait times, incidents child-related, active mazes in kids mode, intensity compliance). Also extend the settings module to include a `kidsDay` sub-object in the settings collection.",
+  "status": "in_progress",
+  "steps": [
+    "Create server/modules/kidsday.mod.js following the pattern of tasks.mod.js and checklists.mod.js. Export default module object with name:'kidsday', title:'Kids Day', version:'1.0.0', routes function.",
+    "Add the following API endpoints: GET /api/kidsday/config (returns Kids Day configuration), PATCH /api/kidsday/config (updates config, management only), GET /api/kidsday/overview (Leitstand KPI overview for current Kids Day), POST /api/kidsday/activate (switches the event into Kids Day mode), POST /api/kidsday/deactivate (switches back to normal mode), GET /api/kidsday/mazes (maze list with intensity levels and kids-mode status), PATCH /api/kidsday/mazes/:id (set intensity level for a maze during Kids Day).",
+    "The kidsDay config object stored in settings should have: { enabled: bool, date: string, startTime: string, endTime: string, ageGroups: [{label, minAge, maxAge}], defaultIntensity: 'leicht'|'mittel'|'aus', mazeConfigs: [{mazeId, intensity, maxGroupSize, specialRules}], safetyBriefingRequired: bool, parentStations: [{name, location}], emergencyProtocol: string }.",
+    "The GET /api/kidsday/overview endpoint should aggregate: total groups processed today, current active groups (based on presence tracking), wait time estimate, incidents (filtered for kids day period), maze capacity utilization, compliance check (all mazes within configured intensity), staff readiness (crew checked in vs required).",
+    "Extend server/modules/settings.mod.js EDITABLE array to include 'kidsDay' and handle merging like it does for 'catering' and 'carpool'.",
+    "Add Kids Day specific checklist templates in the checklists module by extending the TEMPLATES and TYPES exports: add 'kidsday_sicherheit' (child-safe environment checks) and 'kidsday_preshow' (family day preparation) types.",
+    "Publish SSE events on kidsday topic for mode changes: bus.publish('kidsday.changed', data) so the frontend can react in real-time."
+  ],
+  "acceptance_criteria": [
+    "GET /api/kidsday/config returns a valid configuration object (even if empty/defaults when not configured)",
+    "PATCH /api/kidsday/config with management token updates the configuration",
+    "POST /api/kidsday/activate sets the event into Kids Day mode (reflected in GET /api/settings)",
+    "POST /api/kidsday/deactivate removes Kids Day mode",
+    "GET /api/kidsday/overview returns aggregated KPIs",
+    "GET /api/kidsday/mazes returns maze list with intensity configs",
+    "Non-management roles get 403 on config write endpoints",
+    "npm test passes with no regressions"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all existing tests pass (no regressions)",
+    "Start server with `node server/main.js --demo --port 9999 --data /tmp/kd-test` and test new endpoints manually with curl"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

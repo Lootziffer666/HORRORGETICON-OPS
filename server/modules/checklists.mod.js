@@ -3,8 +3,8 @@
 // Pflichtpunkten. Beantwortet im Leitstand die Frage: „Sind wir bereit?“
 import { bad, need, notFound, id, now, iso, hhmm } from '../kernel/util.js';
 
-export const TYPES = ['aufbau', 'sicherheit', 'preshow', 'abschluss'];
-export const TYPE_LABEL = { aufbau: 'Aufbau', sicherheit: 'Sicherheit', preshow: 'Pre-Show', abschluss: 'Abschluss' };
+export const TYPES = ['aufbau', 'sicherheit', 'preshow', 'abschluss', 'kidsday_sicherheit', 'kidsday_preshow'];
+export const TYPE_LABEL = { aufbau: 'Aufbau', sicherheit: 'Sicherheit', preshow: 'Pre-Show', abschluss: 'Abschluss', kidsday_sicherheit: 'Kids Day Sicherheit', kidsday_preshow: 'Kids Day Vorbereitung' };
 
 // Eingebaute Vorlagen — [Text, Pflicht?]
 export const TEMPLATES = {
@@ -38,6 +38,28 @@ export const TEMPLATES = {
     ['Fundsachen eingesammelt und abgegeben', false],
     ['Requisiten gesichert / Wertgegenstände eingeschlossen', false],
     ['Schäden für den Nachbericht notiert', false],
+  ],
+  kidsday_sicherheit: [
+    ['Alle Scare-Elemente auf kindgerechte Intensität gestellt', true],
+    ['Notausgänge frei und kindgerecht markiert (Bodenebene)', true],
+    ['Stolperfallen und scharfe Kanten entfernt/abgedeckt', true],
+    ['Erste-Hilfe-Kasten mit Kinder-Material bestückt', true],
+    ['Eltern-Stationen aufgebaut und beschildert', true],
+    ['Lautstärke auf kinderfreundliches Niveau reduziert', true],
+    ['Stroboskop-Effekte deaktiviert', true],
+    ['Nebeldichte auf Minimum (Sichtweite > 3m)', false],
+    ['Funktest mit Kinder-Notfallkanal durchgeführt', false],
+    ['Altersgruppen-Beschilderung angebracht', false],
+  ],
+  kidsday_preshow: [
+    ['Crew-Briefing zu Kids-Day-Regeln durchgeführt', true],
+    ['Kostüme auf Kindertauglichkeit geprüft (kein Blut, keine Waffen)', true],
+    ['Eltern-Briefing-Stationen besetzt', true],
+    ['Wasserstation und Snacks für Kinder bereit', false],
+    ['Sanitäter mit Kinder-Erfahrung anwesend', true],
+    ['Beruhigungsmaterial bereit (Kuscheltiere, Sticker)', false],
+    ['Kindgerechte Wegführung mit Bodenmarkierungen', false],
+    ['Notfall-Elternruf-System getestet', true],
   ],
 };
 

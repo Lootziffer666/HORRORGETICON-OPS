@@ -5,6 +5,7 @@ import { h, mount } from './core/dom.js';
 import { get, post, getToken, setToken } from './core/api.js';
 import { store, on, connectSSE, emit, notify } from './core/store.js';
 import { toast } from './core/ui.js';
+import { initOfflineBanner } from './core/offline-banner.js';
 import { renderLogin, renderRoleSelect } from './shell/login.js';
 import { renderDesktop } from './shell/desktop.js';
 import { renderTablet } from './shell/tablet.js';
@@ -63,6 +64,7 @@ export function switchRole() { showRoleSelect(); }
 
 function enterApp() {
   connectSSE();
+  initOfflineBanner();
   mountAlarmLayer();
   startHeartbeat();
   wireGlobalEvents();
@@ -104,10 +106,7 @@ function wireGlobalEvents() {
       notify('📢 Durchsage', evt.data.text);
     }
   });
-  on('online', (ok) => {
-    if (!ok) toast('Verbindung zum Leitstand verloren — versuche erneut …', 'err');
-    else toast('Wieder verbunden', 'ok');
-  });
+
   on('settings.changed', async () => {
     store.settings = await get('/api/settings').catch(() => store.settings);
     emit('shell.refresh');

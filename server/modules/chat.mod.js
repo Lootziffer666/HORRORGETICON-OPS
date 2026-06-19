@@ -91,7 +91,7 @@ export default {
       const m = {
         id: id('msg'), channelId: c.id, t: now(), time: hhmm(),
         byPersonId: ctx.person.id, byName: ctx.person.name,
-        text: need(ctx.body, 'text').slice(0, 1000),
+        text: need(ctx.body, 'text').slice(0, 2000),
       };
       db.put('messages', m.id, m);
       db.put('chatReads', `${c.id}_${ctx.person.id}`, { id: `${c.id}_${ctx.person.id}`, t: m.t });

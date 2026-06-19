@@ -454,6 +454,81 @@ export function seedDemo(db) {
   // Entscheidungslog-Beispiel
   feedItem(8, '📌 Entscheidung: Keller-Abschnitt (A8) bleibt offen, Security postiert sich an der Absperrung.', 'entscheidung', 'info', 'Daniel Roth', 'asylum');
 
+  // ───────── Kids Day Konfiguration ─────────
+  const eventDate = `${new Date().getFullYear()}-10-31`;
+  const kidsDay = {
+    enabled: true,
+    date: eventDate,
+    startTime: '10:00',
+    endTime: '16:00',
+    ageGroups: [
+      { label: '4-6 Jahre', minAge: 4, maxAge: 6 },
+      { label: '7-9 Jahre', minAge: 7, maxAge: 9 },
+      { label: '10-12 Jahre', minAge: 10, maxAge: 12 },
+    ],
+    defaultIntensity: 'leicht',
+    mazeConfigs: [
+      { mazeId: mazeIds.asylum, intensity: 'leicht', maxGroupSize: 8, specialRules: 'Kein Stroboskop, Nebel minimal' },
+      { mazeId: mazeIds.saege, intensity: 'mittel', maxGroupSize: 6, specialRules: 'Kettensaege nur Attrappe, kein Motorstart' },
+      { mazeId: mazeIds.kata, intensity: 'leicht', maxGroupSize: 10, specialRules: 'Beleuchtung erhoehen' },
+      { mazeId: mazeIds.puppen, intensity: 'leicht', maxGroupSize: 8, specialRules: null },
+      { mazeId: mazeIds.seuche, intensity: 'aus', maxGroupSize: 0, specialRules: 'Zu intensiv fuer Kids Day — geschlossen' },
+    ],
+    safetyBriefingRequired: true,
+    parentStations: [
+      { name: 'Eltern-Lounge Eingang', location: 'Neben dem Einlass' },
+      { name: 'Eltern-Treffpunkt Mitte', location: 'Zwischen Asylum und Katakomben' },
+    ],
+    emergencyProtocol: 'Bei Notfall: Kind beruhigen, Eltern informieren, Erste Hilfe alarmieren.',
+  };
+  db.patch('settings', 'main', { kidsDay });
+
+  // ───────── Kids Day Checklisten (Instanzen) ─────────
+  // Asylum: kidsday_sicherheit (fast komplett, 1 Punkt offen)
+  const kdSichAsylumItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => {
+    const done = !(mandatory && text.startsWith('Funktest'));
+    return {
+      id: `i${i + 1}`, text, mandatory, done,
+      doneBy: done ? 'Marco Tanner' : null,
+      doneAt: done ? rel(45 - i) : null,
+    };
+  });
+  db.put('checklists', 'cl_kdsich_asylum', {
+    id: 'cl_kdsich_asylum', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
+    mazeId: mazeIds.asylum, items: kdSichAsylumItems,
+    createdBy: 'Daniel Roth', createdAt: iso(),
+    startedBy: 'Marco Tanner',
+    completedAt: null,
+  });
+
+  // Katakomben: kidsday_sicherheit (komplett)
+  const kdSichKataItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => ({
+    id: `i${i + 1}`, text, mandatory, done: true,
+    doneBy: 'Greta Simon',
+    doneAt: rel(60 - i),
+  }));
+  db.put('checklists', 'cl_kdsich_kata', {
+    id: 'cl_kdsich_kata', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
+    mazeId: mazeIds.kata, items: kdSichKataItems,
+    createdBy: 'Daniel Roth', createdAt: iso(),
+    startedBy: 'Greta Simon',
+    completedAt: rel(50),
+  });
+
+  // Asylum: kidsday_preshow (komplett)
+  const kdPreAsylumItems = CHECKLIST_TEMPLATES.kidsday_preshow.map(([text, mandatory], i) => ({
+    id: `i${i + 1}`, text, mandatory, done: true,
+    doneBy: 'Marco Tanner',
+    doneAt: rel(30 - i),
+  }));
+  db.put('checklists', 'cl_kdpre_asylum', {
+    id: 'cl_kdpre_asylum', type: 'kidsday_preshow', title: 'Kids Day Vorbereitung-Rundgang',
+    mazeId: mazeIds.asylum, items: kdPreAsylumItems,
+    createdBy: 'Daniel Roth', createdAt: iso(),
+    startedBy: 'Marco Tanner',
+    completedAt: rel(22),
+  });
+
   // Demo-Szenario = laufende Horrornacht
   db.patch('settings', 'main', { phase: 'live' });
 

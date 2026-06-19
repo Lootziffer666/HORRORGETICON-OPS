@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Kids Day Leitstand UI View: Create the frontend view for managing and monitoring Kids Day from the Management Desktop shell. This includes a dedicated 'Kids Day' navigation entry in the Leitstand section of the desktop sidebar, and a full-featured view with: configuration panel, activation/deactivation controls, live KPI dashboard during Kids Day, maze intensity overview with per-maze controls, and real-time status updates via SSE.",
+  "status": "in_progress",
+  "steps": [
+    "Create web/js/views/kidsday.js following the pattern of dashboard.js and settings.js. Export async function kidsdayView({onCleanup, refresh}).",
+    "The view should have these sections: (1) A status banner showing whether Kids Day mode is currently active or inactive with activate/deactivate button, (2) A KPI row (using the shared kpi() helper) showing: Gruppen heute, Aktive Gruppen, Ø Wartezeit, Offene Meldungen kids-related, (3) A maze intensity panel showing each maze with its configured intensity level (leicht/mittel/aus) as clickable chips that PATCH the intensity, (4) A configuration panel (collapsible) for date, time window, default intensity, safety briefing toggle, (5) A Kids Day checklist status section showing completion of kidsday-specific checklists.",
+    "Register the view in web/js/shell/desktop.js: add an import for kidsdayView, add a NAV entry { id: 'kidsday', label: 'Kids Day', icon: 'users', view: kidsdayView } in the 'Leitstand' section (after 'chat' entry, before the 'Planung' section).",
+    "The view should subscribe to SSE topics ['kidsday', 'settings', 'live', 'checklists'] for real-time updates using onCleanup(on([...], refresh)).",
+    "Use the existing UI patterns: panel() for sections, badge() for status indicators, sheet() for confirmation dialogs (e.g. confirming activation), h() for all DOM construction, act() for API calls with toast feedback.",
+    "The activate/deactivate action should show a confirmation sheet (like phaseSheet in shared.js) before executing, since it affects the entire event.",
+    "Add maze intensity display using colored badges: 'leicht' = green/ok tone, 'mittel' = yellow/warn tone, 'aus' = red/err tone (maze is closed for Kids Day)."
+  ],
+  "acceptance_criteria": [
+    "The 'Kids Day' entry appears in the Desktop shell sidebar under the Leitstand section",
+    "Navigating to #/kidsday loads the Kids Day view without errors",
+    "The view displays current Kids Day status (active/inactive)",
+    "KPI cards render with data from GET /api/kidsday/overview",
+    "Maze intensity chips are clickable and update via PATCH /api/kidsday/mazes/:id",
+    "Activate/Deactivate button works with confirmation dialog",
+    "Configuration fields save via PATCH /api/kidsday/config",
+    "View auto-refreshes on SSE events (kidsday, settings topics)"
+  ],
+  "verification": [
+    "Run `npm test` from /projects/sandbox/HORRORGETICON-OPS and confirm all existing tests pass",
+    "Start server with `node server/main.js --demo` and navigate to http://localhost:8787 - login as DR-0001/4711, verify Kids Day appears in sidebar and view loads"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

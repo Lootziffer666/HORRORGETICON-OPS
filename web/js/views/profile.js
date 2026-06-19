@@ -7,11 +7,12 @@ import { sheet, toast } from '../core/ui.js';
 import { logout, switchRole } from '../app.js';
 
 export async function profileView({ onCleanup, refresh }) {
-  const [me, carpool, orte] = await Promise.all([
+  const [me, carpool, orte, dndState] = await Promise.all([
     get('/api/auth/me'), get('/api/carpool/state').catch(() => null), get('/api/auth/orte'),
+    get('/api/dnd/status').catch(() => ({ active: false, manual: false, auto: false })),
   ]);
   store.me.person = me.person;
-  onCleanup(on(['people', 'carpool'], refresh));
+  onCleanup(on(['people', 'carpool', 'dnd'], refresh));
   const p = me.person;
 
   const row = (icon, label, value, onclick = null, tone = null) => h('div', { class: 'prow' + (onclick ? ' click' : ''), onclick },
@@ -46,6 +47,8 @@ export async function profileView({ onCleanup, refresh }) {
         row('alert', 'Notfallkontakt', p.notfallKontakt || '—'),
         row('walk', 'Kostüm/Rolle', p.kostuem || '—'),
         row('cup', 'Essenswunsch', p.essenswunsch || '—'))),
+
+    dndPanel(dndState, refresh),
 
     carpool && carpoolPanel(carpool, orte, refresh),
 
@@ -124,6 +127,40 @@ function pinSheet() {
         onclick: () => act(async () => { await post('/api/auth/pin', { alt: alt.value, neu: neu.value }); close(); }, 'PIN geändert'),
       }, 'Ändern')),
   });
+}
+
+// ───────── Nicht stören (DND) ─────────
+function dndPanel(dndState, refresh) {
+  let statusBadge, statusText, actionEl;
+
+  if (dndState.auto && !dndState.manual) {
+    statusBadge = badge('ok', 'Automatisch aktiv');
+    statusText = 'Aktiv weil du auf Position bist (Live-Phase)';
+    actionEl = h('span', { class: 'sub', style: { fontStyle: 'italic' } },
+      'DND ist automatisch aktiv. Du kannst es auch manuell ein-/ausschalten.');
+  } else if (dndState.manual) {
+    statusBadge = badge('warn', 'Manuell aktiviert');
+    statusText = 'Du hast DND selbst aktiviert';
+    actionEl = h('button', {
+      class: 'btn sm orange',
+      onclick: () => act(async () => { await post('/api/dnd/disable'); refresh(); }, 'DND deaktiviert'),
+    }, ic('check', 14), 'DND deaktivieren');
+  } else {
+    statusBadge = badge('plain', 'Aus');
+    statusText = 'Alle Durchsagen kommen durch';
+    actionEl = h('button', {
+      class: 'btn sm orange',
+      onclick: () => act(async () => { await post('/api/dnd/enable'); refresh(); }, 'DND aktiviert'),
+    }, ic('pause', 14), 'DND aktivieren');
+  }
+
+  return h('div', { class: 'panel' },
+    h('div', { class: 'panel-h' }, ic('pause', 16, { color: 'var(--fg-muted)' }), h('span', { class: 't' }, 'Nicht stören (DND)')),
+    h('div', { class: 'panel-b', style: { gap: '10px' } },
+      h('div', { class: 'row', style: { gap: '8px' } }, statusBadge, h('span', { class: 'sub' }, statusText)),
+      actionEl,
+      h('span', { class: 'sub', style: { fontSize: '12px', lineHeight: 1.4 } },
+        'Wenn DND aktiv ist, kommen nur Notfall-Durchsagen durch. Normale Durchsagen werden stumm gehalten.')));
 }
 
 // ───────── Fahrgemeinschaft (eigener Bereich) ─────────

@@ -27,6 +27,7 @@ export function renderPhone(root) {
   let guard = null;
   const cleanups = [];
   let unreadChat = 0;
+  let dndActive = false;
 
   const drawNav = () => {
     navEl.replaceChildren(...NAV.map(([id, label, icon]) => h('div', {
@@ -43,6 +44,7 @@ export function renderPhone(root) {
       h('div', { class: 'col grow', style: { gap: 0 } },
         h('span', { style: { fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '15.5px', lineHeight: 1.2 } }, store.me.person.name),
         h('span', { class: 'sub' }, roleLine())),
+      dndActive ? badge('warn', 'DND') : '',
       badgeEl || ''));
   };
 
@@ -70,6 +72,17 @@ export function renderPhone(root) {
   };
   cleanupsGlobal.push(on('chat', refreshUnread));
   refreshUnread();
+
+  const refreshDnd = async () => {
+    try {
+      const s = await get('/api/dnd/status');
+      const changed = dndActive !== s.active;
+      dndActive = s.active;
+      if (changed) drawHead();
+    } catch { /* Komfort */ }
+  };
+  cleanupsGlobal.push(on('dnd', refreshDnd));
+  refreshDnd();
 
   routeFn = route;
   mount(root, h('div', { class: 'theme phone-app' }, head, body, navEl));
