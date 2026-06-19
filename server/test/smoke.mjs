@@ -355,6 +355,51 @@ try {
   const feed = (await api('GET', '/api/feed', { token: actor.token })).json;
   ok(feed.length > 5, `Live-Feed (${feed.length} Einträge)`);
 
+  section('Kids Day');
+  const kdConf = (await api('GET', '/api/kidsday/config', { token: mgmt.token })).json;
+  ok(kdConf && kdConf.enabled === true && kdConf.startTime === '10:00' && kdConf.endTime === '16:00', 'Seeded Kids-Day-Config geladen (enabled, Zeitfenster)');
+  ok(kdConf.mazeConfigs.length === 5 && kdConf.ageGroups.length === 3, 'Config hat 5 Maze-Configs und 3 Altersgruppen');
+
+  const kdPatch = (await api('PATCH', '/api/kidsday/config', { token: mgmt.token, body: { endTime: '17:00' } })).json;
+  ok(kdPatch.endTime === '17:00', 'PATCH /api/kidsday/config aktualisiert Zeitfenster');
+
+  const kdForbPatch = await api('PATCH', '/api/kidsday/config', { token: actor.token, body: { endTime: '18:00' } });
+  ok(kdForbPatch.status === 403, 'Actor darf Config nicht aendern (403)');
+
+  // Deaktivieren und wieder aktivieren
+  const kdDeact = (await api('POST', '/api/kidsday/deactivate', { token: mgmt.token })).json;
+  ok(kdDeact.ok && kdDeact.config.enabled === false, 'Kids Day deaktiviert');
+  const settingsAfterDeact = (await api('GET', '/api/settings', { token: mgmt.token })).json;
+  ok(settingsAfterDeact.kidsDay && settingsAfterDeact.kidsDay.enabled === false, 'Settings spiegelt Deaktivierung');
+
+  const kdAct = (await api('POST', '/api/kidsday/activate', { token: mgmt.token })).json;
+  ok(kdAct.ok && kdAct.config.enabled === true, 'Kids Day aktiviert');
+  const settingsAfterAct = (await api('GET', '/api/settings', { token: mgmt.token })).json;
+  ok(settingsAfterAct.kidsDay && settingsAfterAct.kidsDay.enabled === true, 'Settings spiegelt Aktivierung');
+
+  // Feed-Eintrag zur Aktivierung
+  const kdFeed = (await api('GET', '/api/feed?limit=15', { token: mgmt.token })).json;
+  ok(kdFeed.some((f) => f.text.includes('Kids Day')), 'Kids-Day-Aktivierung im Feed');
+
+  const kdForbAct = await api('POST', '/api/kidsday/activate', { token: actor.token });
+  ok(kdForbAct.status === 403, 'Actor darf Kids Day nicht aktivieren (403)');
+
+  // Overview
+  const kdOverview = (await api('GET', '/api/kidsday/overview', { token: mgmt.token })).json;
+  ok(kdOverview && kdOverview.kidsDayActive === true && kdOverview.mazes.total === 5, 'Overview liefert KPIs (aktiv, 5 Mazes)');
+
+  // Mazes mit Intensitaet
+  const kdMazes = (await api('GET', '/api/kidsday/mazes', { token: mgmt.token })).json;
+  ok(kdMazes.length === 5 && kdMazes.every((m) => m.kidsMode === true), 'GET /api/kidsday/mazes: 5 Mazes im Kids-Mode');
+  const kdAsylum = kdMazes.find((m) => m.name === 'Asylum');
+  ok(kdAsylum && kdAsylum.intensity === 'leicht', 'Asylum-Intensitaet ist leicht');
+
+  // Maze-Intensitaet patchen
+  const kdMazePatch = (await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: mgmt.token, body: { intensity: 'mittel' } })).json;
+  ok(kdMazePatch.intensity === 'mittel', 'PATCH Maze-Intensitaet auf mittel');
+  const kdForbMaze = await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: actor.token, body: { intensity: 'aus' } });
+  ok(kdForbMaze.status === 403, 'Actor darf Maze-Intensitaet nicht aendern (403)');
+
   section('Crash-Sicherheit: kaputter Snapshot → Wiederherstellung');
   server.kill('SIGTERM');
   await new Promise((r) => setTimeout(r, 1200));
