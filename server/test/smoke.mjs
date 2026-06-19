@@ -653,13 +653,14 @@ try {
 
   // Lesen: sortiert nach Startzeit
   const tlBlocks = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
-  ok(tlBlocks.blocks.length === 3, `Timeline hat 3 Bloecke (${tlBlocks.blocks.length})`);
-  ok(tlBlocks.blocks[0].start === '18:00' && tlBlocks.blocks[2].start === '19:00', 'Bloecke nach Startzeit sortiert');
+  ok(tlBlocks.blocks.length >= 9, `Timeline hat >= 9 Bloecke (6 Seed + 3 neu = ${tlBlocks.blocks.length})`);
+  const tlCreated = tlBlocks.blocks.filter((b) => [tb1.id, tb2.id, tb3.id].includes(b.id));
+  ok(tlCreated.length === 3 && tlCreated[0].start <= tlCreated[2].start, 'Erstellte Bloecke nach Startzeit sortiert');
   ok(tlBlocks.frozen === false, 'Timeline ist nicht eingefroren');
 
   // Lead kann lesen
   const tlLead = (await api('GET', '/api/timeline', { token: lead.token })).json;
-  ok(tlLead.blocks.length === 3, 'Lead kann Timeline lesen');
+  ok(tlLead.blocks.length >= 9, 'Lead kann Timeline lesen');
 
   // Actor darf nicht lesen
   const tlActorForb = await api('GET', '/api/timeline', { token: actor.token });
@@ -688,7 +689,7 @@ try {
 
   // Delay-Propagation
   const delayRes = (await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: 15, reason: 'Technik-Verzoegerung' } })).json;
-  ok(delayRes.ok && delayRes.shifted === 2, `Delay propagiert (${delayRes.shifted} Bloecke verschoben)`);
+  ok(delayRes.ok && delayRes.shifted >= 2, `Delay propagiert (${delayRes.shifted} Bloecke verschoben)`);
   const afterDelay = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
   const briefingAfter = afterDelay.blocks.find((b) => b.id === tb2.id);
   const showAfter = afterDelay.blocks.find((b) => b.id === tb3.id);

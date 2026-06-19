@@ -89,6 +89,41 @@ try {
   await mg.waitForTimeout(900);
   ok((await mg.locator('text=★ Beste Option').count()) >= 1, 'Fahrgruppen-Matching zeigt „Beste Option“');
 
+  // ── Kids Day Leitstand ──
+  await mg.evaluate((x) => { location.hash = '#/' + x; }, 'kidsday');
+  await mg.waitForTimeout(700);
+  ok((await mg.locator('.mod-off').count()) === 0, 'Kids Day View rendert ohne Fehlerkarte');
+  ok((await mg.locator('text=Kids Day').count()) >= 1, 'Kids Day Status-Banner sichtbar');
+  ok((await mg.locator('text=Maze-Intensitaeten').count()) >= 1, 'Maze-Intensitaeten Panel vorhanden');
+  ok((await mg.locator('text=Leicht').count()) >= 1 || (await mg.locator('text=Mittel').count()) >= 1, 'Intensitaets-Chips (Leicht/Mittel) angezeigt');
+  await mg.screenshot({ path: `${SHOTS}/17-mgmt-kidsday.png` });
+
+  // ── Timeline / Ablaufplan ──
+  await mg.evaluate((x) => { location.hash = '#/' + x; }, 'timeline');
+  await mg.waitForTimeout(700);
+  ok((await mg.locator('.mod-off').count()) === 0, 'Timeline View rendert ohne Fehlerkarte');
+  ok((await mg.locator('text=Crew-Briefing').count()) >= 1 || (await mg.locator('text=Show-Start').count()) >= 1 || (await mg.locator('text=Einlass').count()) >= 1, 'Timeline-Bloecke werden angezeigt');
+  ok((await mg.locator('text=6 Bloecke').count()) >= 1, 'Block-Count Badge zeigt 6 Bloecke');
+  ok((await mg.locator('text=Einfrieren').count()) >= 1 || (await mg.locator('text=Auftauen').count()) >= 1, 'Freeze/Unfreeze Button vorhanden');
+  ok((await mg.locator('text=Versionshistorie').count()) >= 1, 'Versionshistorie Panel vorhanden');
+  await mg.screenshot({ path: `${SHOTS}/18-mgmt-timeline.png` });
+
+  // ── Dokumenten-Hub ──
+  await mg.evaluate((x) => { location.hash = '#/' + x; }, 'dokumente');
+  await mg.waitForTimeout(700);
+  ok((await mg.locator('.mod-off').count()) === 0, 'Dokumenten-Hub rendert ohne Fehlerkarte');
+  ok((await mg.locator('text=Sicherheits-Briefing').count()) >= 1 || (await mg.locator('text=Lageplan').count()) >= 1 || (await mg.locator('text=Notfallplan').count()) >= 1, 'Seeded Dokumente werden angezeigt');
+  ok((await mg.locator('.chip:has-text("Briefing")').count()) >= 1, 'Kategorie-Filter Chip Briefing vorhanden');
+  ok((await mg.locator('.chip:has-text("Notfall")').count()) >= 1, 'Kategorie-Filter Chip Notfall vorhanden');
+  ok((await mg.locator('text=Angepinnt').count()) >= 1, 'Angepinnt Badge sichtbar');
+  // Dokument oeffnen und Detail-Sheet pruefen
+  await mg.click('.card:has-text("Sicherheits-Briefing")');
+  await mg.waitForSelector('.ov .sheet', { timeout: 4000 });
+  ok(true, 'Dokumenten-Detail Sheet oeffnet sich');
+  await mg.keyboard.press('Escape');
+  await mg.waitForTimeout(400);
+  await mg.screenshot({ path: `${SHOTS}/19-mgmt-dokumente.png` });
+
   // ── 2 · Actor (Phone) ──
   const ctx2 = await b.newContext({ viewport: { width: 412, height: 880 }, isMobile: true, hasTouch: true });
   const ac = await ctx2.newPage(); watch(ac, 'actor');
@@ -110,6 +145,33 @@ try {
   const codeText = await ac.locator('.wallet-code').textContent();
   const short = (codeText || '').split('·')[1]?.trim();
   ok(/^[A-Z2-9]{4}$/.test(short || ''), `Wallet zeigt 4er-Code (${short})`);
+  await ac.click('.m-nav .it:has-text("Start")');
+  await ac.waitForTimeout(600);
+
+  // ── DND Mode (Actor Phone) ──
+  await ac.click('.m-nav .it:has-text("Profil")');
+  await ac.waitForTimeout(700);
+  ok((await ac.locator('text=Nicht stören (DND)').count()) >= 1, 'DND Panel im Profil sichtbar');
+  ok((await ac.locator('text=DND aktivieren').count()) >= 1 || (await ac.locator('text=DND deaktivieren').count()) >= 1, 'DND Toggle-Button vorhanden');
+  // Enable DND via API from actor browser context
+  await ac.evaluate(async () => {
+    const token = localStorage.getItem('hgo.token');
+    await fetch('/api/dnd/enable', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  });
+  await ac.waitForTimeout(500);
+  await ac.click('.m-nav .it:has-text("Profil")');
+  await ac.waitForTimeout(700);
+  ok((await ac.locator('.m-head text=DND').count()) >= 1 || (await ac.locator('.m-head .badge:has-text("DND")').count()) >= 1, 'DND Badge erscheint im Phone-Header');
+  // Disable DND via API
+  await ac.evaluate(async () => {
+    const token = localStorage.getItem('hgo.token');
+    await fetch('/api/dnd/disable', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+  });
+  await ac.waitForTimeout(500);
+  await ac.click('.m-nav .it:has-text("Start")');
+  await ac.waitForTimeout(500);
+  ok((await ac.locator('.m-head text=DND').count()) === 0, 'DND Badge verschwindet nach Deaktivierung');
+  await ac.screenshot({ path: `${SHOTS}/20-actor-dnd.png` });
   await ac.click('.m-nav .it:has-text("Start")');
   await ac.waitForTimeout(600);
 
