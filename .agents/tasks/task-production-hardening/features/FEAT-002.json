@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "Resilience hardening: Improve graceful shutdown (drain SSE connections), add connection limits for SSE, and harden the server against event-night failure modes (too many SSE clients, stale connections, memory pressure).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In server/kernel/bus.js, add a MAX_CLIENTS constant (default 200 - more than enough for even a large crew). When a new SSE client tries to attach and the limit is reached, respond with 503 and a clear message. This prevents memory exhaustion from leaked connections.",
     "In server/kernel/bus.js attach(), add a per-person connection limit (max 3 concurrent SSE connections per personId). If exceeded, drop the oldest connection for that person before attaching the new one. This handles the common case of a crew member refreshing their browser tab repeatedly.",
@@ -20,5 +20,5 @@
     "Run npm test and confirm all checks pass"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implementation uses server.closeAllConnections() (Node 18.2+) in shutdown handler to immediately destroy idle keep-alive sockets so server.close() callback fires promptly. The per-person limit (MAX_PER_PERSON=3) drops the oldest connections when exceeded. The stale reaper uses setInterval with .unref() so it does not block exit. The global cap (MAX_CLIENTS=200) returns 503 directly from bus.attach() before writing SSE headers. Tests verify per-person limit and cleanup. The crash-recovery test depends on shutdown completing within 1200ms, which now works because closeAllConnections() ensures fast teardown."
 }
