@@ -204,7 +204,8 @@ ${rows}
       };
 
       const escCsv = (s) => {
-        const str = String(s || '').replace(/"/g, '""');
+        let str = String(s || '').replace(/"/g, '""');
+        if (/^[=+\-@\t\r]/.test(str)) str = "'" + str;
         return str.includes(';') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
       };
 
