@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-003",
+  "type": "docs",
+  "description": "Update README.md to reflect all new features (Kids Day, DND-Modus, Dokumenten-Hub, Timeline/Ablaufplan, Event-Timeline-Export), update test counts, and maintain pitch-relevant tone.",
+  "status": "completed",
+  "steps": [
+    "In README.md, update the 'Was die Plattform kann' section under 'Leitstand (Management, Desktop)' to mention: Kids Day Leitstand (Familientag-Modus mit Intensitaetssteuerung), Ablaufplan/Master-Timeline (Bloecke, Verzoegerungspropagation, Versionierung, Freeze), Dokumenten-Hub (zentrale Event-Dokumente mit Kategorien und Sichtbarkeitssteuerung), Event-Timeline-Export (chronologischer Gesamtexport als JSON/HTML/CSV).",
+    "In the 'Scare Actor (Phone)' section, add mention of DND-Modus (Nicht-stoeren-Modus waehrend Position, filtert unwichtige Benachrichtigungen).",
+    "Update the test count references: change '125 API-End-to-End-Checks' to '241 API-End-to-End-Checks' in the Schnellstart section. Update the '47 Browser-E2E-Checks' reference to '62+ Browser-E2E-Checks' (reflecting the 15+ new ones). Also update the Struktur section test line if it mentions counts.",
+    "In the Struktur section, update the modules count from '18 Fachmodule' to '23 Fachmodule' (count: announce, auth, backup, breaks, carpool, catering, chat, checklists, csv, dbadmin, dnd, documents, incidents, kidsday, live, mazes, people, reports, schedule, settings, tasks, timeline, timeline-versions = 23).",
+    "Add a brief mention of the load test in the testing section: 'Lasttests: server/test/load.mjs (150+ gleichzeitige SSE-Verbindungen + parallele API-Calls)'.",
+    "Keep the pitch-relevant tone and formatting consistent with existing style."
+  ],
+  "acceptance_criteria": [
+    "README.md mentions Kids Day, DND-Modus, Dokumenten-Hub, Ablaufplan/Timeline, Event-Timeline-Export",
+    "Test counts are updated to 241+ and 62+",
+    "Module count is updated to 23",
+    "Load test is mentioned",
+    "The document remains well-formatted Markdown"
+  ],
+  "verification": [
+    "Read README.md and confirm all new features are mentioned",
+    "Verify the test and module counts are accurate"
+  ],
+  "blocked_reason": null,
+  "findings": "All 241 tests pass. README updated with Kids Day, DND-Modus, Dokumenten-Hub, Ablaufplan/Master-Timeline, Event-Timeline-Export. Test counts corrected to 241/66, module count to 23, load test added to Betrieb section."
+}
