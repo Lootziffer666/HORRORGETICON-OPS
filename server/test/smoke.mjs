@@ -324,7 +324,7 @@ try {
   const ready1 = (await api('GET', '/api/checklists/readiness', { token: mgmt.token })).json;
   ok(ready1.every((r) => r.bereit), 'Readiness: alle Mazes bereit ✓');
   const tpl = (await api('GET', '/api/checklists/templates', { token: lead.token })).json;
-  ok(tpl.length === 4 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (4 Typen)');
+  ok(tpl.length === 6 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (6 Typen)');
   const newCl = (await api('POST', '/api/checklists', { token: mgmt.token, body: { type: 'preshow', mazeId: asylum.id } })).json;
   ok(newCl.items.length >= 5 && newCl.mandatoryOpen > 0, 'Rundgang aus Vorlage angelegt');
   const actorCl = await api('POST', `/api/checklists/${newCl.id}/toggle`, { token: actor.token, body: { itemId: 'i1' } });
