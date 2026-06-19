@@ -1,0 +1,47 @@
+{
+  "id": "FEAT-001",
+  "type": "docs",
+  "description": "Update all 4 pitch files with current numbers, features, and pricing to reflect production-ready state of the app",
+  "status": "in_progress",
+  "steps": [
+    "In pitch/Horrorgeticon_Ops_Pitchdeck.html line 158: Change '<b>52</b> Crew' to '<b>120+</b> Crew'",
+    "In pitch/Horrorgeticon_Ops_Pitchdeck.html line 159: Change '<b>300+</b> automatische Tests, alle gruen' to '<b>307</b> automatische Tests, alle gruen'",
+    "In pitch/Horrorgeticon_Ops_Pitchdeck.html line 214 sticky note: Change '48/52 da' to '98/120 da' (proportional to 120+ crew)",
+    "In pitch/Horrorgeticon_Ops_Pitchdeck.html slide 14 (Technik) around line 365-372: Add pill for 'Load-Test: 150+ gleichzeitige Verbindungen' and add pill for 'Security Hardening' (Rate-Limiting, Graceful Shutdown). Already has pills for Kids Day, DND, Timeline, Dokumente, Export, Offline.",
+    "In pitch/Horrorgeticon_Ops_Pitchdeck.html slide 17 (Investition) around line 422: Change '12.800 EUR' market price to '13.300 EUR' and update the descriptive text below about market value to reflect new scope",
+    "In pitch/Kostenaufstellung.html: Update market prices in the table - Saison-Lizenz: 4.800->5.000, Einrichtung: 2.400->2.500, Schulung: 1.500->1.800, Generalprobe: stays 1.200, Eventnacht: stays 2.000, Nachbereitung: 900->800. Market sum: 12.800->13.300. Friendship prices stay EXACTLY the same (1.200, 600, 450, 350, 600, 200 = 3.400). Update savings line to ~10.000 EUR (75%)",
+    "In pitch/Kostenaufstellung.html: Update market value range in intro paragraph from '80.000-120.000 EUR' to '80.000-150.000 EUR' and adjust hourly rate mention to '95-150 EUR/h' and hours to '800-1.200 Stunden'",
+    "In pitch/Kostenaufstellung.html: Change '300+ automatische Tests' to '307 automatische Tests (241 API + 66 Browser-E2E)' in the 'Im Preis enthalten' box",
+    "In pitch/Kostenaufstellung.html: Add mention of Load-Test (150+ gleichzeitige SSE-Verbindungen getestet) in the 'Im Preis enthalten' box",
+    "In pitch/Kostenaufstellung.html: Update Stand date from '21.06.2026' to '19.06.2026'",
+    "In pitch/Anschreiben.md: Change '300-fach pruefen lassen' to '307-fach pruefen lassen' in P.S. section",
+    "In pitch/Anschreiben.md: In the Spickzettel section, add demo highlights: Kids Day zeigen, Dokumente zeigen, Timeline zeigen. Expand the WLAN-concern answer to explicitly mention Offline-Modus and Load-Test (150+ gleichzeitige Verbindungen)",
+    "In pitch/Anschreiben.md: Update '~12.800 EUR' market reference to '~13.300 EUR'",
+    "In pitch/Anschreiben.md: Update '120 Darsteller' reference (already correct from previous update) or add if missing",
+    "In pitch/README.md line 25: Change '300+ automatische Tests' to '307 automatische Tests' and update breakdown to '241 API-Checks + 66 Browser-E2E-Checks'",
+    "In pitch/README.md line 26: Change '52 Crew . 5 Mazes' to '120+ Crew . 5 Mazes'",
+    "In pitch/README.md: Add mention of Load-Test (150+ gleichzeitige Verbindungen) as additional demo feature"
+  ],
+  "acceptance_criteria": [
+    "All references to '52 Crew' in pitch/ are changed to '120+ Crew'",
+    "All test counts show '307' (not 300+ or 172) - with breakdown 241 API + 66 E2E",
+    "Module count is '23 Server-Module' everywhere in pitch/",
+    "Kostenaufstellung market sum is 13.300 EUR, friendship price stays 3.400 EUR",
+    "Individual friendship prices are UNCHANGED",
+    "Market value of platform development shows >100.000 EUR prominently",
+    "Load-Test (150+ connections) is mentioned in Kostenaufstellung and README",
+    "New features (Kids Day, DND, Timeline, Docs Hub, Export, Offline, Security Hardening) appear in Pitchdeck",
+    "Anschreiben references updated numbers and new demo highlights",
+    "Stand date is 19.06.2026",
+    "npm test still passes (241 tests green)"
+  ],
+  "verification": [
+    "Run npm test and confirm all 241 tests pass",
+    "grep -c '172' pitch/* should return 0 (no old test count remaining)",
+    "grep '3.400' pitch/Kostenaufstellung.html should still show the friendship price",
+    "grep '13.300' pitch/Kostenaufstellung.html should show the new market sum",
+    "grep '307' pitch/Kostenaufstellung.html pitch/README.md pitch/Anschreiben.md should show updated test counts"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -27,7 +27,7 @@ Im Anhang findest du zwei Dateien:
    Spaß machen darf und die Zahlen trotzdem seriös bleiben. Kurzfassung: Die
    Entwicklung ist passiert und kostet euch nichts. Das Saisonpaket (Einrichtung,
    Schulung, Generalprobe, Eventnacht-Support, Nachlese) liegt marktüblich bei
-   ~12.800 € — ihr zahlt 3.400 €. Freundschaftspreis, mit Backfisch-Garantie.
+   ~13.300 € — ihr zahlt 3.400 €. Freundschaftspreis, mit Backfisch-Garantie.
    Kein Witz. Also doch, ein bisschen — aber ein vertraglich gemeinter.
 
 Worum es im Kern geht, in einem Satz: **Die Horrornacht darf eskalieren, die Orga
@@ -47,7 +47,7 @@ Beste Grüße & bis gleich im Kalender,
 [Dein Name]
 
 P.S.: Die Demo läuft auf meinem Laptop, braucht kein Internet und überlebt laut
-Testsuite sogar einen Absturz mitten in der Nacht. Ich habe es 300-fach prüfen
+Testsuite sogar einen Absturz mitten in der Nacht. Ich habe es 307-fach prüfen
 lassen. Man will ja nicht unvorbereitet zu Leuten, die beruflich Menschen erschrecken.
 
 ---
@@ -67,8 +67,9 @@ lassen. Man will ja nicht unvorbereitet zu Leuten, die beruflich Menschen erschr
 - **Einstieg (2 min):** Hook aus Slide 2 erzählen — die 23:40-Uhr-Szene. Lacher abholen, dann ernst werden.
 - **Demo statt Folien (15 min):** Deck nur bis Slide 4, dann ins Live-System wechseln.
   Reihenfolge: Leitstand-Dashboard → Live-Karte → einmal Pause freigeben → Actor-Handy zeigen → QR-Marke scannen lassen (Publikumsbeteiligung!).
+  Neue Highlights zeigen: Kids Day Modus (Intensität live umschalten), Dokumenten-Hub (Briefings, Lagepläne), Master-Timeline (Ablaufplan mit Versionen).
 - **Einwände, die kommen werden:**
-  - *„Was, wenn das WLAN ausfällt?"* → Läuft im lokalen LAN auf einem Laptop, kein Internet nötig. Heartbeat zeigt Funklöcher sogar an.
+  - *„Was, wenn das WLAN ausfällt?"* → Läuft im lokalen LAN auf einem Laptop, kein Internet nötig. Heartbeat zeigt Funklöcher sogar an. Dazu: eingebauter Offline-Modus (PWA cached alles lokal, Aktionen werden bei Reconnect synchronisiert). Load-Test bestanden mit 150+ gleichzeitigen Verbindungen — das System hält mehr aus als euer Gelände Crew hat.
   - *„Unsere Crew ist nicht technisch."* → Login ist Code + PIN, die Actor-App hat vier Knöpfe. Schulung + Spickzettel sind im Paket.
   - *„Was kostet das wirklich?"* → Kostenblatt rüberschieben. Die Zahlen stehen, nichts kommt obendrauf.
 - **Abschluss:** Nicht „meldet euch mal", sondern konkret: „Sollen wir die Generalprobe
