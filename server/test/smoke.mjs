@@ -727,6 +727,20 @@ try {
   const leadWrite = await api('POST', '/api/timeline', { token: lead.token, body: { title: 'X', start: '20:00', end: '21:00' } });
   ok(leadWrite.status === 403, 'Lead darf nicht schreiben (403)');
 
+  // Delay: Zero Minuten abgelehnt (400)
+  const delayZero = await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: 0, reason: 'null' } });
+  ok(delayZero.status === 400, `Delay mit 0 Minuten wird abgelehnt (${delayZero.status})`);
+
+  // Delay: Negative Minuten abgelehnt (400)
+  const delayNeg = await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: -5, reason: 'negativ' } });
+  ok(delayNeg.status === 400, `Delay mit negativem Wert wird abgelehnt (${delayNeg.status})`);
+
+  // DELETE: Block loeschen
+  const delBlock = await api('DELETE', `/api/timeline/${tb3.id}`, { token: mgmt.token });
+  ok(delBlock.status === 200 && delBlock.json?.ok, 'Block geloescht');
+  const afterBlockDel = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(!afterBlockDel.blocks.find((b) => b.id === tb3.id), 'Geloeschter Block nicht mehr in Timeline');
+
   section('Dokumenten-Hub');
 
   // Management erstellt ein Dokument

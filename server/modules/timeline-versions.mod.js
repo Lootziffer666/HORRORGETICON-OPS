@@ -24,7 +24,7 @@ export default {
   version: '1.0.0',
   description: 'Master-Timeline mit Bloecken, Verzoegerungspropagation, Versionierung und Freeze.',
 
-  routes({ get, post, patch }, { db, bus, feed }) {
+  routes({ get, post, patch, del }, { db, bus, feed }) {
 
     function getState() {
       return db.get('timeline_state', 'main') || { frozen: false };
@@ -50,6 +50,14 @@ export default {
         author: author || null,
       };
       db.put('timeline_versions', ver.id, ver);
+      // Cap stored versions at 50 - prune oldest
+      if (versions.length + 1 > 50) {
+        const sorted = [...versions, ver].sort((a, b) => a.version - b.version);
+        const toRemove = sorted.slice(0, sorted.length - 50);
+        for (const old of toRemove) {
+          db.del('timeline_versions', old.id);
+        }
+      }
       return ver;
     }
 
@@ -120,11 +128,24 @@ export default {
       return updated;
     }, { roles: ['management'] });
 
+    // --- DELETE /api/timeline/:id ---
+    del('/api/timeline/:id', async (ctx) => {
+      checkFrozen(ctx);
+      const block = db.get('timeline_blocks', ctx.params.id) || notFound('Block nicht gefunden');
+      db.del('timeline_blocks', block.id);
+      const ver = nextVersion(`Block geloescht: ${block.title}`, ctx.person.name);
+      bus.publish('timeline.changed', { deleted: block.id, version: ver.version });
+      return { ok: true, deleted: block.id };
+    }, { roles: ['management'] });
+
     // --- POST /api/timeline/delay ---
     post('/api/timeline/delay', async (ctx) => {
       checkFrozen(ctx);
       const blockId = need(ctx.body, 'blockId');
       const delayMinutes = need(ctx.body, 'delayMinutes', 'number');
+      if (!Number.isInteger(delayMinutes) || delayMinutes <= 0) {
+        bad('delayMinutes muss eine positive Ganzzahl sein (> 0)');
+      }
       const reason = ctx.body.reason || `Verschiebung um ${delayMinutes} min`;
 
       const target = db.get('timeline_blocks', blockId) || notFound('Block nicht gefunden');
