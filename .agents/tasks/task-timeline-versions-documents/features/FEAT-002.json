@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Dokumenten-Hub: Server-Modul + Frontend-View + Shell-Integration (Desktop + Tablet) + Tests",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create server/modules/documents.mod.js following the pattern from server/modules/tasks.mod.js. Import utilities from ../kernel/util.js (bad, need, notFound, id, now, hhmm). Export default module object with name 'documents', title 'Dokumenten-Hub', version, description, and routes function.",
     "Implement document CRUD: GET /api/documents (list, filterable by category query param), POST /api/documents (create with title, content as markdown text, category: one of briefing/lageplan/notfall/sonstiges, visibility: one of alle/management/lead), PATCH /api/documents/:id (update fields), DELETE /api/documents/:id (soft delete or hard delete). Documents have: id, title, content, category, visibility, pinned (boolean), createdAt, createdBy, updatedAt, updatedBy.",
@@ -33,5 +33,5 @@
     "Verify web/sw.js SHELL array contains '/js/views/documents.js'"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 237 tests pass (216 existing + 21 new Dokumenten-Hub tests). Module auto-discovered from server/modules/ directory. Documents collection is auto-created by the db layer on first use. Visibility filtering works: management sees all, lead sees alle+lead, actor sees only alle. Pinned documents sort to top. Role restrictions enforced via { roles: ['management'] } on POST/PATCH/DELETE routes. Desktop shell entry added to Planung section. Tablet shell shows pinned documents panel in the Mehr tab."
 }
