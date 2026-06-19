@@ -1,0 +1,7 @@
+{
+  "task_id": "task-timeline-versions-documents",
+  "task_description": "Implement Master-Timeline-Versionierung and Dokumenten-Hub features for the event management platform",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

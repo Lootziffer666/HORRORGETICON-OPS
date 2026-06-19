@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Master-Timeline-Versionierung: Server-Modul + Frontend-View + Shell-Integration + Tests",
+  "status": "in_progress",
+  "steps": [
+    "Create server/modules/timeline-versions.mod.js following the pattern from server/modules/tasks.mod.js. Import utilities from ../kernel/util.js (bad, need, notFound, id, now, hhmm). Export default module object with name 'timeline-versions', title, version, description, and routes function.",
+    "Implement timeline block CRUD: GET /api/timeline (returns all blocks sorted by start), POST /api/timeline (create block with title, start HH:MM, end HH:MM, type string), PATCH /api/timeline/:id (update block fields). Blocks have: id, title, start, end, type, order, createdAt, updatedBy. Only 'management' role can write, 'lead' + 'management' can read.",
+    "Implement delay propagation: POST /api/timeline/delay with body { blockId, delayMinutes, reason }. When a block shifts, all subsequent blocks (by start time) shift by the same amount. This creates a new version automatically.",
+    "Implement versioning: Every mutation (create/edit/delete block, delay propagation) creates a new version. Store versions as collection 'timeline_versions' with { id, version number, timestamp, blocks (snapshot of all blocks at that point), reason/comment, author }. GET /api/timeline/versions returns version list (id, version, timestamp, author, reason). GET /api/timeline/versions/:id returns full version snapshot with blocks.",
+    "Implement version diff: GET /api/timeline/versions/:id1/diff/:id2 returns differences between two versions (added/removed/changed blocks).",
+    "Implement freeze: POST /api/timeline/freeze freezes the current version (sets frozen=true in settings/state). When frozen, only management can make emergency changes (must include emergency:true in body). GET /api/timeline should return frozen status.",
+    "Create web/js/views/timeline.js following the pattern from web/js/views/kidsday.js. Export async function timelineView({ onCleanup, refresh }). Show: timeline blocks as visual timeline (sorted by time), delay propagation button/form, version history list, freeze/unfreeze toggle. Use imports: h, ic, badge, panel from ../core/dom.js; get, post, patch, act from ../core/api.js; on, store from ../core/store.js; sheet, toast from ../core/ui.js.",
+    "Register the timeline view in web/js/shell/desktop.js: Add import for timelineView from '../views/timeline.js'. Add NAV entry in the 'Leitstand' section: { id: 'timeline', label: 'Ablaufplan', icon: 'cal', view: timelineView }.",
+    "Add '/js/views/timeline.js' to the SHELL array in web/sw.js for offline caching.",
+    "Add comprehensive tests to server/test/smoke.mjs in a new section 'Master-Timeline-Versionierung'. Test: create blocks, read them, delay propagation, version creation, version list, version diff, freeze/unfreeze, role restrictions (actor cannot write, lead can read)."
+  ],
+  "acceptance_criteria": [
+    "GET /api/timeline returns sorted timeline blocks",
+    "POST /api/timeline creates a new block and auto-creates a version",
+    "PATCH /api/timeline/:id updates a block and auto-creates a version",
+    "POST /api/timeline/delay shifts the target block and all subsequent blocks, creates a version with reason",
+    "POST /api/timeline/freeze freezes the timeline, subsequent edits require emergency:true",
+    "GET /api/timeline/versions lists all versions with metadata",
+    "GET /api/timeline/versions/:id returns full version snapshot",
+    "GET /api/timeline/versions/:id1/diff/:id2 returns the diff between two versions",
+    "Only management can write, lead+management can read, actor gets 403",
+    "Frontend view renders timeline blocks and version history",
+    "Navigation entry appears in desktop shell under Leitstand section",
+    "Service Worker cache includes the new view file",
+    "All existing 190 tests continue to pass"
+  ],
+  "verification": [
+    "Run 'npm test' and confirm all tests pass including new timeline versioning tests",
+    "Verify web/sw.js SHELL array contains '/js/views/timeline.js'"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

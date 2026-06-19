@@ -43,6 +43,7 @@ const SHELL = [
   '/js/views/settings.js',
   '/js/views/shared.js',
   '/js/views/tasks.js',
+  '/js/views/timeline.js',
   '/js/views/wallet.js',
 ];
 

@@ -19,6 +19,7 @@ import { incidentsView } from '../views/incidents.js';
 import { announceView } from '../views/announce.js';
 import { chatView } from '../views/chat.js';
 import { kidsdayView } from '../views/kidsday.js';
+import { timelineView } from '../views/timeline.js';
 import { cateringMgmtView } from '../views/catering_mgmt.js';
 import { carpoolView } from '../views/carpool.js';
 import { scheduleView } from '../views/schedule.js';
@@ -39,6 +40,7 @@ const NAV = [
   { id: 'durchsagen', label: 'Durchsagen', icon: 'mega', view: announceView },
   { id: 'chat', label: 'Chat', icon: 'chat', view: chatView, cnt: 'chat' },
   { id: 'kidsday', label: 'Kids Day', icon: 'users', view: kidsdayView },
+  { id: 'timeline', label: 'Ablaufplan', icon: 'cal', view: timelineView },
   { sec: 'Planung' },
   { id: 'personen', label: 'Personen', icon: 'users', view: peopleView },
   { id: 'mazes', label: 'Mazes & Zuteilung', icon: 'door', view: mazesView },

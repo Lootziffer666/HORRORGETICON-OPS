@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Dokumenten-Hub: Server-Modul + Frontend-View + Shell-Integration (Desktop + Tablet) + Tests",
+  "status": "pending",
+  "steps": [
+    "Create server/modules/documents.mod.js following the pattern from server/modules/tasks.mod.js. Import utilities from ../kernel/util.js (bad, need, notFound, id, now, hhmm). Export default module object with name 'documents', title 'Dokumenten-Hub', version, description, and routes function.",
+    "Implement document CRUD: GET /api/documents (list, filterable by category query param), POST /api/documents (create with title, content as markdown text, category: one of briefing/lageplan/notfall/sonstiges, visibility: one of alle/management/lead), PATCH /api/documents/:id (update fields), DELETE /api/documents/:id (soft delete or hard delete). Documents have: id, title, content, category, visibility, pinned (boolean), createdAt, createdBy, updatedAt, updatedBy.",
+    "Implement pinning: PATCH /api/documents/:id with { pinned: true/false }. GET /api/documents returns pinned documents first.",
+    "Implement visibility filtering: When a non-management user requests GET /api/documents, filter out documents with visibility 'management'. When a non-lead non-management user requests, also filter out 'lead' visibility docs. Only 'management' can create/edit/delete. All authenticated users can read (respecting visibility).",
+    "Create web/js/views/documents.js following the pattern from web/js/views/kidsday.js. Export async function documentsView({ onCleanup, refresh }). Show: category filter chips (alle, briefing, lageplan, notfall, sonstiges), document list with pinned items prominent at top, markdown preview (simple rendering - just show raw text or basic formatting), create/edit dialog using sheet() from ../core/ui.js. Use imports: h, ic, badge, panel from ../core/dom.js; get, post, patch, del, act from ../core/api.js; on, store from ../core/store.js; sheet, toast from ../core/ui.js.",
+    "Register the documents view in web/js/shell/desktop.js: Add import for documentsView from '../views/documents.js'. Add NAV entry in the 'Planung' section: { id: 'dokumente', label: 'Dokumente', icon: 'doc', view: documentsView }.",
+    "Register the documents view in web/js/shell/tablet.js: Add it to the 'mehr' tab area. In the leadMehrView function, add a documents panel that shows pinned documents and a link to the full document list.",
+    "Add '/js/views/documents.js' to the SHELL array in web/sw.js for offline caching.",
+    "Add comprehensive tests to server/test/smoke.mjs in a new section 'Dokumenten-Hub'. Test: create document, read list, update, pin/unpin, delete, category filtering, visibility filtering (actor cannot see management-only docs), role restrictions (actor cannot create/edit/delete, gets 403), pinned docs appear first."
+  ],
+  "acceptance_criteria": [
+    "GET /api/documents returns documents list filtered by visibility, pinned first",
+    "POST /api/documents creates a document (management only)",
+    "PATCH /api/documents/:id updates a document (management only)",
+    "DELETE /api/documents/:id deletes a document (management only)",
+    "Category filtering via query param works",
+    "Visibility filtering works - actor cannot see management-only docs",
+    "Pinned documents appear first in the list",
+    "Frontend view renders document list with category filters and create/edit dialog",
+    "Navigation entry appears in desktop shell under Planung section",
+    "Documents panel appears in tablet shell Mehr tab",
+    "Service Worker cache includes the new view file",
+    "All existing tests continue to pass plus new document hub tests pass"
+  ],
+  "verification": [
+    "Run 'npm test' and confirm all tests pass including new document hub tests",
+    "Verify web/sw.js SHELL array contains '/js/views/documents.js'"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

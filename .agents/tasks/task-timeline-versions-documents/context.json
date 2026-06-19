@@ -1,0 +1,29 @@
+{
+  "project_type": "Node.js zero-dependency server + Vanilla JS PWA, event management platform",
+  "language": "JavaScript (ES modules)",
+  "build_system": "No build step. Server runs with Node.js >= 18, no npm install needed.",
+  "test_framework": "Custom smoke test in server/test/smoke.mjs - spawns server with --demo, runs HTTP assertions",
+  "build_command": "No build step required",
+  "test_command": "npm test",
+  "verification_instructions": "Run 'npm test' from repo root. All tests must pass (currently 190). Server starts with 'node server/main.js --demo'.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "No setup needed. Node.js >= 18 is the only prerequisite. No npm install.",
+  "environment_constraints": "Zero npm dependencies. All code is self-contained. Tests spawn a real server instance.",
+  "contribution_requirements": "Modules follow server/modules/*.mod.js pattern. Views follow web/js/views/*.js pattern. Service Worker cache must include new view files. Tests must be added to server/test/smoke.mjs.",
+  "key_patterns": "Server modules export { name, title, version, description, routes({ get, post, patch, del }, { db, bus, feed }) }. Utility imports from ../kernel/util.js. Views export async function viewName({ onCleanup, refresh }). DOM helpers from ../core/dom.js. API from ../core/api.js. Store from ../core/store.js. Desktop shell NAV array in web/js/shell/desktop.js. Tablet shell in web/js/shell/tablet.js. SW cache in web/sw.js SHELL array.",
+  "relevant_files": [
+    "server/modules/timeline.mod.js",
+    "server/modules/tasks.mod.js",
+    "server/modules/checklists.mod.js",
+    "server/kernel/util.js",
+    "server/kernel/http.js",
+    "server/test/smoke.mjs",
+    "web/js/shell/desktop.js",
+    "web/js/shell/tablet.js",
+    "web/sw.js",
+    "web/js/views/kidsday.js",
+    "web/js/views/tasks.js",
+    "web/js/views/reports.js"
+  ],
+  "directory_structure": "server/ (main.js entry, kernel/ for core infra, modules/ for feature modules, test/ for tests, seed/ for demo data), web/ (PWA frontend: js/core/, js/shell/, js/views/, css/), kmp/ (Kotlin multiplatform shell)"
+}

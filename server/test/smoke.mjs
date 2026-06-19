@@ -642,6 +642,91 @@ try {
   ok(health.db.counts.people >= 50, `Datenbestand wiederhergestellt (${health.db.counts.people} Personen)`);
   ok(health.db.bootReport.some((l) => l.includes('unbrauchbar')), 'Boot-Report dokumentiert die Reparatur');
 
+  section('Master-Timeline-Versionierung');
+  // Erstelle Timeline-Bloecke
+  const tb1 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Einlass', start: '18:00', end: '18:30', type: 'phase' } })).json;
+  ok(tb1.id && tb1.title === 'Einlass' && tb1.start === '18:00', 'Block erstellt (Einlass 18:00)');
+  const tb2 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Briefing', start: '18:30', end: '19:00', type: 'meeting' } })).json;
+  ok(tb2.id && tb2.start === '18:30', 'Block erstellt (Briefing 18:30)');
+  const tb3 = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Show Start', start: '19:00', end: '23:00', type: 'show' } })).json;
+  ok(tb3.id && tb3.start === '19:00', 'Block erstellt (Show Start 19:00)');
+
+  // Lesen: sortiert nach Startzeit
+  const tlBlocks = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(tlBlocks.blocks.length === 3, `Timeline hat 3 Bloecke (${tlBlocks.blocks.length})`);
+  ok(tlBlocks.blocks[0].start === '18:00' && tlBlocks.blocks[2].start === '19:00', 'Bloecke nach Startzeit sortiert');
+  ok(tlBlocks.frozen === false, 'Timeline ist nicht eingefroren');
+
+  // Lead kann lesen
+  const tlLead = (await api('GET', '/api/timeline', { token: lead.token })).json;
+  ok(tlLead.blocks.length === 3, 'Lead kann Timeline lesen');
+
+  // Actor darf nicht lesen
+  const tlActorForb = await api('GET', '/api/timeline', { token: actor.token });
+  ok(tlActorForb.status === 403, 'Actor darf Timeline nicht lesen (403)');
+
+  // Actor darf nicht schreiben
+  const tlActorWrite = await api('POST', '/api/timeline', { token: actor.token, body: { title: 'X', start: '20:00', end: '21:00' } });
+  ok(tlActorWrite.status === 403, 'Actor darf Block nicht erstellen (403)');
+
+  // PATCH: Block bearbeiten
+  const tbUpd = (await api('PATCH', `/api/timeline/${tb1.id}`, { token: mgmt.token, body: { title: 'Einlass VIP', start: '17:45' } })).json;
+  ok(tbUpd.title === 'Einlass VIP' && tbUpd.start === '17:45', 'Block bearbeitet (Titel + Start)');
+
+  // Versionen wurden automatisch erstellt
+  const tlVers = (await api('GET', '/api/timeline/versions', { token: mgmt.token })).json;
+  ok(tlVers.length >= 4, `Versionen erstellt (${tlVers.length} nach 3 Creates + 1 Patch)`);
+  ok(tlVers[0].version === 1 && tlVers[0].author, 'Erste Version hat Nummer und Autor');
+
+  // Version-Detail abrufen
+  const ver1 = (await api('GET', `/api/timeline/versions/${tlVers[0].id}`, { token: mgmt.token })).json;
+  ok(ver1.blocks.length >= 1 && ver1.version === 1, 'Version-Detail enthaelt Block-Snapshot');
+
+  // Lead kann Versionen lesen
+  const tlVersLead = (await api('GET', '/api/timeline/versions', { token: lead.token })).json;
+  ok(tlVersLead.length >= 4, 'Lead kann Versionen lesen');
+
+  // Delay-Propagation
+  const delayRes = (await api('POST', '/api/timeline/delay', { token: mgmt.token, body: { blockId: tb2.id, delayMinutes: 15, reason: 'Technik-Verzoegerung' } })).json;
+  ok(delayRes.ok && delayRes.shifted === 2, `Delay propagiert (${delayRes.shifted} Bloecke verschoben)`);
+  const afterDelay = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  const briefingAfter = afterDelay.blocks.find((b) => b.id === tb2.id);
+  const showAfter = afterDelay.blocks.find((b) => b.id === tb3.id);
+  ok(briefingAfter.start === '18:45', `Briefing verschoben auf 18:45 (${briefingAfter.start})`);
+  ok(showAfter.start === '19:15', `Show verschoben auf 19:15 (${showAfter.start})`);
+
+  // Delay erstellt neue Version mit Grund
+  const versAfterDelay = (await api('GET', '/api/timeline/versions', { token: mgmt.token })).json;
+  const delayVer = versAfterDelay[versAfterDelay.length - 1];
+  ok(delayVer.reason.includes('Technik-Verzoegerung'), 'Delay-Version hat Grund');
+
+  // Version-Diff
+  const diffRes = (await api('GET', `/api/timeline/versions/${tlVers[tlVers.length - 1].id}/diff/${delayVer.id}`, { token: mgmt.token })).json;
+  ok(diffRes.v1 && diffRes.v2 && Array.isArray(diffRes.changed), 'Diff liefert v1, v2, changed');
+  ok(diffRes.changed.length >= 1, `Diff zeigt geaenderte Bloecke (${diffRes.changed.length})`);
+
+  // Freeze
+  const freezeRes = (await api('POST', '/api/timeline/freeze', { token: mgmt.token })).json;
+  ok(freezeRes.ok && freezeRes.frozen === true, 'Timeline eingefroren');
+  const tlFrozen = (await api('GET', '/api/timeline', { token: mgmt.token })).json;
+  ok(tlFrozen.frozen === true, 'GET /api/timeline zeigt frozen=true');
+
+  // Bearbeitung ohne emergency wird abgelehnt
+  const frozenEdit = await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Test', start: '20:00', end: '21:00' } });
+  ok(frozenEdit.status === 400 && frozenEdit.json.error.includes('eingefroren'), 'Aenderung bei Freeze abgelehnt');
+
+  // Notfall-Aenderung mit emergency:true geht durch
+  const emergEdit = (await api('POST', '/api/timeline', { token: mgmt.token, body: { title: 'Notfall-Block', start: '22:00', end: '22:30', emergency: true } })).json;
+  ok(emergEdit.id && emergEdit.title === 'Notfall-Block', 'Notfall-Aenderung (emergency:true) funktioniert');
+
+  // Unfreeze (toggle)
+  const unfreezeRes = (await api('POST', '/api/timeline/freeze', { token: mgmt.token })).json;
+  ok(unfreezeRes.ok && unfreezeRes.frozen === false, 'Timeline aufgetaut (toggle)');
+
+  // Lead darf nicht schreiben
+  const leadWrite = await api('POST', '/api/timeline', { token: lead.token, body: { title: 'X', start: '20:00', end: '21:00' } });
+  ok(leadWrite.status === 403, 'Lead darf nicht schreiben (403)');
+
   section('Offline-Robustheit: Service Worker & Retry-Logik');
 
   // (a) SW-Cache enthaelt alle JS-Dateien
@@ -659,7 +744,7 @@ try {
     '/js/views/livemap.js', '/js/views/mazes.js', '/js/views/modules.js',
     '/js/views/people.js', '/js/views/profile.js', '/js/views/reports.js',
     '/js/views/schedule.js', '/js/views/settings.js', '/js/views/shared.js',
-    '/js/views/tasks.js', '/js/views/wallet.js',
+    '/js/views/tasks.js', '/js/views/timeline.js', '/js/views/wallet.js',
   ];
   const missingFromCache = expectedJS.filter((f) => !swSrc.includes(`'${f}'`));
   ok(missingFromCache.length === 0, `SW-Cache enthaelt alle ${expectedJS.length} JS-Dateien${missingFromCache.length ? ' (fehlend: ' + missingFromCache.join(', ') + ')' : ''}`);
