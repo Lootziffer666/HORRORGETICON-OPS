@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Extend the Playwright E2E tests in server/test/ui.e2e.mjs with at least 15 new browser checks covering the new features: Kids Day view, Timeline/Ablaufplan view, Dokumenten-Hub view, and DND mode toggle.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In server/test/ui.e2e.mjs, after the existing management navigation tests and before the Actor section (section 2), add new test checks for the new views. The desktop shell routes are: 'kidsday' (Kids Day), 'timeline' (Ablaufplan), 'dokumente' (Dokumente). Navigate using `mg.evaluate((x) => { location.hash = '#/' + x; }, viewName)` followed by waitForTimeout(700) as done in existing tests.",
     "Add Kids Day view tests (at least 3 checks): navigate to #/kidsday, verify the view renders (no .mod-off), check for KPI elements or configuration panels (look for text like 'Kids Day', 'Altersgruppen', intensity controls), verify maze configuration cards are shown.",
@@ -22,5 +22,5 @@
     "Run `node --check server/test/ui.e2e.mjs` to verify no syntax errors"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Added 19 new ok() assertions (4 Kids Day, 5 Timeline, 6 Dokumenten-Hub, 4 DND). All placed after Fahrgruppen test in section 1 for management views, and after existing Actor tests before section 3 for DND. Screenshots numbered 17-20. npm test passes (241 checks). node --check confirms no syntax errors."
 }
