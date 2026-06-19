@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "docs",
   "description": "Update all 4 pitch files with current numbers, features, and pricing to reflect production-ready state of the app",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In pitch/Horrorgeticon_Ops_Pitchdeck.html line 158: Change '<b>52</b> Crew' to '<b>120+</b> Crew'",
     "In pitch/Horrorgeticon_Ops_Pitchdeck.html line 159: Change '<b>300+</b> automatische Tests, alle gruen' to '<b>307</b> automatische Tests, alle gruen'",
@@ -43,5 +43,5 @@
     "grep '307' pitch/Kostenaufstellung.html pitch/README.md pitch/Anschreiben.md should show updated test counts"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All updates applied successfully. npm test passes (241 tests). The '172' matches in the Pitchdeck HTML are in base64-encoded screenshot images, not text content. The sticky note text (48/52 da) mentioned in the briefing was already updated in a prior task and no longer present. All acceptance criteria verified."
 }
