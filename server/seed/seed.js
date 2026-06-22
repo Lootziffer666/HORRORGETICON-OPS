@@ -1,6 +1,6 @@
-// Horrorgeticon Ops — Basisdaten + Demo-Szenario „Horrornacht“
-// Das Demo-Szenario entspricht dem Datenstand der Design-Mockups
-// (Asylum A1–A8, Lena Krause auf A3, Vorfall im Keller, Catering Nord/Süd …).
+// Horrorgeticon Ops — Basisdaten + Demo-Szenario „Horrornacht”
+// Energeticon-Mazes: THE CIRCUS (C1–C8), ZOMBIETRAIN (Z1–Z8), THE MINE (M1–M9),
+// BLACKOUT (B1–B7), The Street (T1–T8). KidsDay: THE CIRCUS → FAIRYWOOD.
 import crypto from 'node:crypto';
 import { id, now, iso, hhmm, hashPin } from '../kernel/util.js';
 import { TEMPLATES as CHECKLIST_TEMPLATES, TYPE_LABEL as CHECKLIST_LABEL } from '../modules/checklists.mod.js';
@@ -34,45 +34,120 @@ const rel = (min) => now() - min * 60000;
 
 export function seedDemo(db) {
   // ───────── Mazes, Räume, Positionen ─────────
+  // Energeticon-Gelände: THE CIRCUS (Eduardschacht), ZOMBIETRAIN (Schmiede),
+  // THE MINE (KAUE EG), BLACKOUT (KAUE OG), The Street (Außenbereich)
   const mazes = [
     {
-      key: 'asylum', name: 'Asylum', short: 'A', order: 1, zone: { x: '3%', y: '6%', w: '21%', h: '26%' },
+      key: 'circus', name: 'THE CIRCUS', short: 'C', order: 1,
+      zone: { x: '33%', y: '3%', w: '22%', h: '27%' },
       rooms: [
-        { n: 'Empfang', x: '4%', y: '8%', w: '22%', h: '34%' }, { n: 'Schleuse', x: '29%', y: '6%', w: '20%', h: '28%' },
-        { n: 'Zellenblock', x: '52%', y: '8%', w: '22%', h: '34%' }, { n: 'OP-Saal', x: '77%', y: '6%', w: '19%', h: '32%' },
-        { n: 'Korridor', x: '6%', y: '46%', w: '88%', h: '8%', hall: true },
-        { n: 'Waschraum', x: '4%', y: '58%', w: '20%', h: '34%' }, { n: 'Archiv', x: '27%', y: '60%', w: '22%', h: '32%' },
-        { n: 'Isolation', x: '52%', y: '58%', w: '21%', h: '34%' }, { n: 'Keller', x: '76%', y: '60%', w: '20%', h: '32%' },
+        { n: 'Eingangstor',     x: '4%',  y: '35%', w: '18%', h: '22%' },
+        { n: 'Artistengasse',   x: '4%',  y: '5%',  w: '18%', h: '28%' },
+        { n: 'Manege',          x: '24%', y: '5%',  w: '48%', h: '50%' },
+        { n: 'Spiegelkabinett', x: '74%', y: '5%',  w: '22%', h: '50%' },
+        { n: 'Clownspassage',   x: '4%',  y: '60%', w: '38%', h: '35%' },
+        { n: 'Zirkuswagen',     x: '44%', y: '60%', w: '28%', h: '35%' },
+        { n: 'Finale',          x: '74%', y: '60%', w: '22%', h: '35%' },
       ],
       positions: [
-        ['A1', 'Empfang', '14%', '24%', 'Scare-Punkt hinter Empfangstresen · Trigger: Glocke'],
-        ['A2', 'Schleuse', '38%', '18%', 'Enger Durchgang · Trigger: Türschlag'],
-        ['A3', 'Zellenblock', '63%', '26%', 'Scare-Punkt hinter Gittertür · Trigger: Lichtwechsel'],
-        ['A4', 'OP-Saal', '86%', '22%', 'OP-Tisch · Trigger: Monitor-Flackern'],
-        ['A5', 'Waschraum', '12%', '62%', 'Spiegel-Scare · Trigger: Wasserhahn'],
-        ['A6', 'Archiv', '36%', '70%', 'Regalgasse · Trigger: Aktenwagen'],
-        ['A7', 'Isolation', '62%', '66%', 'Gepolsterte Zelle · Trigger: Klopfzeichen'],
-        ['A8', 'Keller', '85%', '70%', 'Dunkelstrecke · Trigger: Kettengeräusch'],
-        ['A9', 'Korridor', '30%', '48%', 'Wandernder Scare im Korridor'],
-        ['A10', 'Korridor Ost', '70%', '48%', 'Wandernder Scare, Abschnitt Ost'],
-        ['A11', 'Finale', '94%', '88%', 'Chase zum Ausgang'],
+        ['C1', 'Eingangstor',     '13%', '46%', 'Scare-Punkt am Tor · Trigger: Licht aus'],
+        ['C2', 'Artistengasse',   '13%', '19%', 'Versteck hinter Kulisse · Trigger: Schuss'],
+        ['C3', 'Manege',          '48%', '28%', 'Clown-Scare im Zentrum · Trigger: Horn'],
+        ['C4', 'Manege',          '35%', '42%', 'Wandernder Clown · Trigger: Sprung'],
+        ['C5', 'Spiegelkabinett', '85%', '28%', 'Spiegel-Scare · Trigger: Licht-Blitz'],
+        ['C6', 'Clownspassage',   '22%', '77%', 'Versteck Boden · Trigger: Nebel'],
+        ['C7', 'Zirkuswagen',     '58%', '77%', 'Puppenspieler · Trigger: Musik-Stop'],
+        ['C8', 'Finale',          '85%', '77%', 'Chase zum Ausgang · Trigger: Sirene'],
       ],
     },
     {
-      key: 'saege', name: 'Kettensäge', short: 'S', order: 2, zone: { x: '27%', y: '6%', w: '19%', h: '26%' },
-      roomNames: ['Sägewerk', 'Holzlager', 'Werkstatt', 'Galerie', 'Grube', 'Tunnel', 'Hof', 'Finale'],
+      key: 'zombie', name: 'ZOMBIETRAIN', short: 'Z', order: 2,
+      zone: { x: '16%', y: '8%', w: '16%', h: '28%' },
+      rooms: [
+        { n: 'Bahnsteig',     x: '62%', y: '55%', w: '35%', h: '40%' },
+        { n: 'Ausweichgleis', x: '75%', y: '5%',  w: '21%', h: '48%' },
+        { n: 'Kesselraum',    x: '43%', y: '5%',  w: '30%', h: '30%' },
+        { n: 'Korridor',      x: '43%', y: '52%', w: '18%', h: '10%', hall: true },
+        { n: 'Maschinenraum', x: '35%', y: '35%', w: '28%', h: '32%' },
+        { n: 'Förderturm',    x: '5%',  y: '5%',  w: '36%', h: '45%' },
+      ],
+      positions: [
+        ['Z1', 'Bahnsteig',     '79%', '72%', 'Zombie am Gleis · Trigger: Zuggeräusch'],
+        ['Z2', 'Bahnsteig',     '66%', '62%', 'Horde-Scare Eingang · Trigger: Alarm'],
+        ['Z3', 'Ausweichgleis', '85%', '28%', 'Zugführer-Zombie · Trigger: Pfeife'],
+        ['Z4', 'Kesselraum',    '58%', '20%', 'Heizer-Zombie · Trigger: Dampfstoß'],
+        ['Z5', 'Korridor',      '52%', '57%', 'Wandernder Scare im Korridor'],
+        ['Z6', 'Maschinenraum', '49%', '50%', 'Mechaniker-Zombie · Trigger: Kolben'],
+        ['Z7', 'Förderturm',    '23%', '25%', 'Gruben-Zombie oben · Trigger: Kette'],
+        ['Z8', 'Förderturm',    '23%', '42%', 'Chase zum Ausgang · Trigger: Sirene'],
+      ],
     },
     {
-      key: 'kata', name: 'Katakomben', short: 'K', order: 3, zone: { x: '3%', y: '38%', w: '21%', h: '26%' },
-      roomNames: ['Gruft', 'Beinhaus', 'Krypta', 'Tunnel Nord', 'Tunnel Süd', 'Altarraum', 'Brunnen', 'Nische', 'Gang', 'Ausstieg'],
+      key: 'mine', name: 'THE MINE', short: 'M', order: 3,
+      zone: { x: '64%', y: '5%', w: '30%', h: '28%' },
+      rooms: [
+        { n: 'Eingang Schacht', x: '4%',  y: '70%', w: '32%', h: '26%' },
+        { n: 'Querschlag',      x: '36%', y: '70%', w: '28%', h: '10%', hall: true },
+        { n: 'Hauptstollen',    x: '4%',  y: '38%', w: '60%', h: '30%' },
+        { n: 'Abbaustrecke',    x: '66%', y: '38%', w: '30%', h: '56%' },
+        { n: 'Setzmaschine',    x: '4%',  y: '5%',  w: '28%', h: '31%' },
+        { n: 'Grubenbahn',      x: '34%', y: '5%',  w: '30%', h: '31%' },
+        { n: 'Ausfahrt',        x: '66%', y: '5%',  w: '28%', h: '31%' },
+      ],
+      positions: [
+        ['M1', 'Eingang Schacht', '20%', '82%', 'Einlasser · Trigger: Schienenrollen'],
+        ['M2', 'Hauptstollen',    '32%', '52%', 'Wandernder Kumpel · Trigger: Hacke'],
+        ['M3', 'Hauptstollen',    '48%', '52%', 'Stollenscare · Trigger: Einsturz-Sound'],
+        ['M4', 'Querschlag',      '50%', '75%', 'Korridor-Springer · Trigger: Dampf'],
+        ['M5', 'Abbaustrecke',    '81%', '62%', 'Tunnelende-Zombie · Trigger: Licht'],
+        ['M6', 'Setzmaschine',    '18%', '20%', 'Maschinengeist · Trigger: Motor'],
+        ['M7', 'Grubenbahn',      '49%', '20%', 'Bahnscare · Trigger: Glocke'],
+        ['M8', 'Ausfahrt',        '80%', '20%', 'Rettungsleiter-Scare · Trigger: Sirene'],
+        ['M9', 'Abbaustrecke',    '81%', '78%', 'Chase-Zombie · Trigger: Kette'],
+      ],
     },
     {
-      key: 'puppen', name: 'Puppenhaus', short: 'P', order: 4, zone: { x: '27%', y: '38%', w: '19%', h: '26%' },
-      roomNames: ['Salon', 'Kinderzimmer', 'Werkstatt', 'Speicher', 'Flur', 'Keller'],
+      key: 'blackout', name: 'BLACKOUT', short: 'B', order: 4,
+      zone: { x: '64%', y: '35%', w: '30%', h: '28%' },
+      rooms: [
+        { n: 'Korridor',       x: '2%',  y: '44%', w: '92%', h: '8%',  hall: true },
+        { n: 'Bürotrakt',      x: '2%',  y: '5%',  w: '40%', h: '37%' },
+        { n: 'Serverraum',     x: '44%', y: '5%',  w: '25%', h: '37%' },
+        { n: 'Schaltanlage',   x: '71%', y: '5%',  w: '26%', h: '37%' },
+        { n: 'Unterstation',   x: '2%',  y: '54%', w: '46%', h: '40%' },
+        { n: 'Reaktorkammer',  x: '50%', y: '54%', w: '46%', h: '40%' },
+      ],
+      positions: [
+        ['B1', 'Bürotrakt',    '21%', '23%', 'Büroangestellter · Trigger: PC-Piep'],
+        ['B2', 'Serverraum',   '56%', '23%', 'Serverschrank-Scare · Trigger: Lüfter'],
+        ['B3', 'Schaltanlage', '84%', '23%', 'Elektriker-Zombie · Trigger: Kurzschluss'],
+        ['B4', 'Korridor',     '46%', '48%', 'Wandernder Scare im Dunkeln'],
+        ['B5', 'Unterstation', '24%', '73%', 'Hochspannungs-Scare · Trigger: Licht'],
+        ['B6', 'Reaktorkammer','72%', '73%', 'Reaktor-Scare · Trigger: Alarm'],
+        ['B7', 'Reaktorkammer','88%', '87%', 'Chase-Finale · Trigger: Sirene'],
+      ],
     },
     {
-      key: 'seuche', name: 'Seuchendorf', short: 'D', order: 5, zone: { x: '3%', y: '70%', w: '21%', h: '26%' },
-      roomNames: ['Marktplatz', 'Lazarett', 'Kapelle', 'Brunnen', 'Scheune', 'Gasse', 'Quarantäne'],
+      key: 'street', name: 'The Street', short: 'T', order: 5,
+      zone: { x: '3%', y: '65%', w: '91%', h: '30%' },
+      rooms: [
+        { n: 'Westzugang',  x: '3%',  y: '30%', w: '20%', h: '38%' },
+        { n: 'Hauptachse',  x: '24%', y: '36%', w: '50%', h: '25%', hall: true },
+        { n: 'Nordhof',     x: '24%', y: '5%',  w: '24%', h: '29%' },
+        { n: 'Kreuzung',    x: '40%', y: '36%', w: '18%', h: '25%' },
+        { n: 'Ostzugang',   x: '76%', y: '30%', w: '20%', h: '38%' },
+        { n: 'Dunkelpfad',  x: '24%', y: '63%', w: '50%', h: '30%' },
+      ],
+      positions: [
+        ['T1', 'Westzugang', '13%', '49%', 'Straßen-Scare Eingang West · Trigger: Rütteln'],
+        ['T2', 'Hauptachse', '38%', '48%', 'Wandernder Scare Achse · Trigger: Schrei'],
+        ['T3', 'Hauptachse', '55%', '48%', 'Wandernder Scare Mitte · Trigger: Griff'],
+        ['T4', 'Nordhof',    '36%', '19%', 'Hof-Scare Nord · Trigger: Sprung'],
+        ['T5', 'Kreuzung',   '49%', '48%', 'Kreuzungs-Scare · Trigger: Nebel'],
+        ['T6', 'Ostzugang',  '86%', '49%', 'Straßen-Scare Eingang Ost · Trigger: Licht'],
+        ['T7', 'Dunkelpfad', '38%', '78%', 'Dunkelpfad-Scare Süd · Trigger: Klatsch'],
+        ['T8', 'Dunkelpfad', '60%', '78%', 'Chase zum Ausgang · Trigger: Alarm'],
+      ],
     },
   ];
 
@@ -109,13 +184,12 @@ export function seedDemo(db) {
     }
   }
 
-  // ───────── Service-Zonen (Geländekarte) ─────────
+  // ───────── Service-Zonen (Geländekarte Energeticon) ─────────
   const zones = [
-    { id: 'z_einlass', name: 'Eingang / Kassen', x: '62%', y: '6%', w: '32%', h: '26%', kind: 'einlass', note: 'Andrang hoch · Welle 41' },
-    { id: 'z_crew', name: 'Backstage / Crew', x: '62%', y: '38%', w: '15%', h: '26%', kind: 'crew' },
-    { id: 'z_catering', name: 'Catering', x: '79.5%', y: '38%', w: '14.5%', h: '26%', kind: 'catering' },
-    { id: 'z_security', name: 'Security-Punkt Süd', x: '62%', y: '70%', w: '32%', h: '26%', kind: 'security' },
-    { id: 'z_erw', name: 'Erweiterung 2027', x: '27%', y: '70%', w: '19%', h: '26%', kind: 'ghost', note: 'reserviert' },
+    { id: 'z_einlass',  name: 'Eingang / Kassen',   x: '20%', y: '70%', w: '30%', h: '26%', kind: 'einlass',  note: 'Andrang hoch · Welle 41' },
+    { id: 'z_crew',     name: 'Backstage / Crew',    x: '3%',  y: '38%', w: '12%', h: '24%', kind: 'crew' },
+    { id: 'z_catering', name: 'Catering',            x: '3%',  y: '65%', w: '14%', h: '24%', kind: 'catering' },
+    { id: 'z_security', name: 'Security-Punkt',      x: '55%', y: '70%', w: '38%', h: '26%', kind: 'security' },
   ];
   for (const z of zones) db.put('zones', z.id, z);
 
@@ -133,7 +207,7 @@ export function seedDemo(db) {
 
   const named = [
     P('DR-0001', 'Daniel Roth', ['management'], { pin: '4711', ort: 'Schauerfeld', notizen: 'Event-Leitung' }),
-    P('MT-0301', 'Marco Tanner', ['lead', 'actor'], { pin: '1234', ort: 'Nebelbach', notizen: 'Maze Lead Asylum' }),
+    P('MT-0301', 'Marco Tanner', ['lead', 'actor'], { pin: '1234', ort: 'Nebelbach', notizen: 'Maze Lead THE CIRCUS' }),
     P('LK-0427', 'Lena Krause', ['actor'], { pin: '1234', ort: 'Nebelbach', notizen: 'Stimme schonen ab 22 Uhr' }),
     P('JW-1102', 'Jonas Weber', ['actor'], { pin: '1234', ort: 'Rabenstein' }),
     P('SL-0815', 'Sarah Lindt', ['actor'], { ort: 'Grauenthal' }),
@@ -142,10 +216,10 @@ export function seedDemo(db) {
     P('PN-0904', 'Pavel Novak', ['actor'], { ort: 'Wolfshagen', notizen: 'Krank gemeldet? Bitte nachfassen.' }),
     P('RF-0718', 'Resa Fuchs', ['actor', 'springer'], { ort: 'Nebelbach' }),
     P('TH-0820', 'Timo Hartmann', ['actor'], { pin: '1234', ort: 'Eulenbruch' }),
-    P('GS-0210', 'Greta Simon', ['lead', 'actor'], { pin: '1234', ort: 'Dornfelde', notizen: 'Maze Lead Katakomben' }),
-    P('OB-0444', 'Olaf Brandt', ['lead', 'actor'], { ort: 'Kaltenborn', notizen: 'Maze Lead Kettensäge' }),
-    P('HK-0223', 'Hanna Keller', ['lead', 'actor'], { ort: 'Schauerfeld', notizen: 'Maze Lead Puppenhaus' }),
-    P('VB-0667', 'Viktor Berg', ['lead', 'actor'], { ort: 'Finsterloh', notizen: 'Maze Lead Seuchendorf' }),
+    P('GS-0210', 'Greta Simon', ['lead', 'actor'], { pin: '1234', ort: 'Dornfelde', notizen: 'Maze Lead THE MINE' }),
+    P('OB-0444', 'Olaf Brandt', ['lead', 'actor'], { ort: 'Kaltenborn', notizen: 'Maze Lead ZOMBIETRAIN' }),
+    P('HK-0223', 'Hanna Keller', ['lead', 'actor'], { ort: 'Schauerfeld', notizen: 'Maze Lead BLACKOUT' }),
+    P('VB-0667', 'Viktor Berg', ['lead', 'actor'], { ort: 'Finsterloh', notizen: 'Maze Lead The Street' }),
     P('BO-0102', 'Ben Okafor', ['actor'], { pin: '1234', ort: 'Rabenstein' }),
     P('AD-0915', 'Aylin Demir', ['actor'], { ort: 'Mitternfurt' }),
     P('FB-0330', 'Finn Berger', ['actor'], { ort: 'Aschenrode' }),
@@ -176,25 +250,25 @@ export function seedDemo(db) {
   const byName = Object.fromEntries(all.map((p) => [p.name, p]));
 
   // Leads den Mazes zuordnen
-  db.patch('mazes', mazeIds.asylum, { leadPersonId: byName['Marco Tanner'].id });
-  db.patch('mazes', mazeIds.kata, { leadPersonId: byName['Greta Simon'].id });
-  db.patch('mazes', mazeIds.saege, { leadPersonId: byName['Olaf Brandt'].id });
-  db.patch('mazes', mazeIds.puppen, { leadPersonId: byName['Hanna Keller'].id });
-  db.patch('mazes', mazeIds.seuche, { leadPersonId: byName['Viktor Berg'].id });
+  db.patch('mazes', mazeIds.circus,   { leadPersonId: byName['Marco Tanner'].id });
+  db.patch('mazes', mazeIds.zombie,   { leadPersonId: byName['Olaf Brandt'].id });
+  db.patch('mazes', mazeIds.mine,     { leadPersonId: byName['Greta Simon'].id });
+  db.patch('mazes', mazeIds.blackout, { leadPersonId: byName['Hanna Keller'].id });
+  db.patch('mazes', mazeIds.street,   { leadPersonId: byName['Viktor Berg'].id });
 
   // ───────── Zuteilung ─────────
   const assign = (posCode, personName) => {
     const pid = byName[personName]?.id;
     if (pid && posIds[posCode]) db.patch('positions', posIds[posCode], { assignedPersonId: pid });
   };
-  assign('A1', 'Jonas Weber'); assign('A2', 'Sarah Lindt'); assign('A3', 'Lena Krause');
-  assign('A4', 'Tariq Aydin'); assign('A5', 'Mia Sommer'); /* A6 offen: Pavel fehlt */
-  assign('A7', 'Resa Fuchs'); assign('A8', 'Timo Hartmann');
-  assign('A9', 'Emil Hartwig'); assign('A10', 'Frida Lorenz'); /* A11 offen */
-  assign('K2', 'Ben Okafor'); assign('P5', 'Aylin Demir'); assign('S1', 'Finn Berger'); assign('D4', 'Nora Pohl');
+  // THE CIRCUS: C6 offen (Pavel fehlt), C4 wandernder Clown bleibt frei
+  assign('C1', 'Jonas Weber'); assign('C2', 'Sarah Lindt'); assign('C3', 'Lena Krause');
+  assign('C5', 'Mia Sommer'); assign('C7', 'Resa Fuchs'); assign('C8', 'Timo Hartmann');
+  assign('C4', 'Tariq Aydin');
+  assign('M2', 'Ben Okafor'); assign('B5', 'Aylin Demir'); assign('Z1', 'Finn Berger'); assign('T4', 'Nora Pohl');
 
   // Restliche Filler auf restliche Positionen verteilen (ein paar bleiben offen)
-  const openLeave = new Set(['pos_asylum_A6', 'pos_asylum_A11', 'pos_kata_K4', 'pos_saege_S3']);
+  const openLeave = new Set(['pos_circus_C6', 'pos_mine_M4', 'pos_zombie_Z5', 'pos_blackout_B4']);
   const freePositions = db.find('positions', (p) => !p.assignedPersonId && !openLeave.has(p.id));
   const unassigned = all.filter((p) => p.status === 'aktiv' && p.roles.includes('actor') && !p.roles.includes('springer') &&
     !db.one('positions', (x) => x.assignedPersonId === p.id) && !p.roles.includes('lead') && !p.roles.includes('management') && !p.roles.includes('catering'));
@@ -261,14 +335,14 @@ export function seedDemo(db) {
       leavePosition: !!extra.leavePosition,
     });
   };
-  incident('i_keller', 6, 'gast', 'hoch', 'Gast hat Absperrung durchbrochen — Keller, Asylum', 'A8', 'Timo Hartmann', 'offen', { leavePosition: false });
-  incident('i_strobo', 11, 'technik', 'mittel', 'Stroboskop ausgefallen — Abschnitt ist zu dunkel', 'A3', 'Lena Krause', 'in_arbeit', { assignee: null });
+  incident('i_keller', 6, 'gast', 'hoch', 'Gast hat Absperrung durchbrochen — Finale, THE CIRCUS', 'C8', 'Timo Hartmann', 'offen', { leavePosition: false });
+  incident('i_strobo', 11, 'technik', 'mittel', 'Stroboskop ausgefallen — Manege ist zu dunkel', 'C3', 'Lena Krause', 'in_arbeit', { assignee: null });
   incident('i_funk', 29, 'technik', 'mittel', 'Funkgerät defekt — Ersatz benötigt', null, 'Daniel Roth', 'offen', { ort: 'Eingang Süd' });
-  incident('i_getraenk', 55, 'getraenk', 'niedrig', 'Getränk angefordert', 'K2', 'Ben Okafor', 'erledigt');
-  incident('i_nebel', 76, 'technik', 'mittel', 'Nebelmaschine Abschnitt B ausgefallen', 'A9', 'Marco Tanner', 'erledigt');
-  incident('i_kostuem', 103, 'sonstiges', 'niedrig', 'Kostüm-Reparatur benötigt', 'P5', 'Aylin Demir', 'erledigt');
-  incident('i_kollaps', 120, 'notfall', 'hoch', 'Gast kollabiert — Sanitäter im Einsatz', 'S2', 'Finn Berger', 'erledigt');
-  incident('i_requisite', 155, 'technik', 'niedrig', 'Requisite locker', 'D4', 'Nora Pohl', 'erledigt');
+  incident('i_getraenk', 55, 'getraenk', 'niedrig', 'Getränk angefordert', 'M2', 'Ben Okafor', 'erledigt');
+  incident('i_nebel', 76, 'technik', 'mittel', 'Nebelmaschine Zirkuswagen ausgefallen', 'C7', 'Marco Tanner', 'erledigt');
+  incident('i_kostuem', 103, 'sonstiges', 'niedrig', 'Kostüm-Reparatur benötigt', 'B5', 'Aylin Demir', 'erledigt');
+  incident('i_kollaps', 120, 'notfall', 'hoch', 'Gast kollabiert — Sanitäter im Einsatz', 'Z1', 'Finn Berger', 'erledigt');
+  incident('i_requisite', 155, 'technik', 'niedrig', 'Requisite locker', 'T4', 'Nora Pohl', 'erledigt');
 
   // ───────── Durchsagen + Feed ─────────
   const ann = (idv, minAgo, level, text, scopeLabel, byNamex, scope = { type: 'all' }) => {
@@ -280,18 +354,18 @@ export function seedDemo(db) {
     });
   };
   ann('a_andrang', 45, 'wichtig', 'Hoher Andrang am Einlass — Wellen werden ab sofort enger getaktet. Bleibt auf Position.', 'an alle', 'Daniel Roth');
-  ann('a_nebel', 76, 'info', 'Nebelmaschine in Abschnitt B läuft wieder.', 'nur Asylum', 'Marco Tanner', { type: 'maze', mazeId: mazeIds.asylum });
+  ann('a_nebel', 76, 'info', 'Nebelmaschine Zirkuswagen läuft wieder.', 'nur THE CIRCUS', 'Marco Tanner', { type: 'maze', mazeId: mazeIds.circus });
 
   const feedItem = (minAgo, text, kind, level = 'info', by = 'System', mazeKey = null) => {
     const t = rel(minAgo);
     const f = { id: id('f'), t, time: hhmm(t), text, kind, level, scope: 'all', by, module: null, mazeId: mazeKey ? mazeIds[mazeKey] : null };
     db.put('feed', f.id, f);
   };
-  feedItem(6, '🚨 PRIO HOCH — Gast hat Absperrung durchbrochen (Asylum · A8 „Keller“)', 'meldung', 'err', 'Timo Hartmann', 'asylum');
-  feedItem(11, '🛠️ Stroboskop ausgefallen — Abschnitt ist zu dunkel (Asylum · A3 „Zellenblock“)', 'meldung', 'warn', 'Lena Krause', 'asylum');
-  feedItem(11, '☕ Pausen-Anfrage: Lena Krause (Asylum · A3) — „Brauche 10 Minuten, Stimme ist durch.“', 'pause', 'info', 'Lena Krause', 'asylum');
+  feedItem(6, '🚨 PRIO HOCH — Gast hat Absperrung durchbrochen (THE CIRCUS · C8 „Finale”)', 'meldung', 'err', 'Timo Hartmann', 'circus');
+  feedItem(11, '🛠️ Stroboskop ausgefallen — Manege ist zu dunkel (THE CIRCUS · C3 „Manege”)', 'meldung', 'warn', 'Lena Krause', 'circus');
+  feedItem(11, '☕ Pausen-Anfrage: Lena Krause (THE CIRCUS · C3) — „Brauche 10 Minuten, Stimme ist durch.”', 'pause', 'info', 'Lena Krause', 'circus');
   feedItem(45, '📢 Wichtig: Hoher Andrang am Einlass — Wellen werden enger getaktet.', 'durchsage', 'warn', 'Daniel Roth');
-  feedItem(76, '📢 Nebelmaschine in Abschnitt B läuft wieder.', 'durchsage', 'info', 'Marco Tanner', 'asylum');
+  feedItem(76, '📢 Nebelmaschine Zirkuswagen läuft wieder.', 'durchsage', 'info', 'Marco Tanner', 'circus');
   feedItem(225, '✅ Schichtbeginn: Crew checkt ein — 47 von 52 anwesend.', 'anwesenheit', 'info');
 
   // ───────── Catering ─────────
@@ -376,13 +450,13 @@ export function seedDemo(db) {
   ensureCh('ch_catering', '#catering', 'system', { restrict: ['management', 'catering'] });
   for (const m of db.all('mazes')) ensureCh(`ch_maze_${m.id}`, `#${m.name.toLowerCase()}`, 'maze', { mazeId: m.id });
 
-  msg('ch_leitstand', 9, 'Daniel Roth', 'Security ist auf dem Weg in den Keller, Asylum hält Abschnitt an.');
-  msg('ch_leitstand', 8, 'Marco Tanner', 'Verstanden, Timo hält Position. Gäste werden an A7 gestaut.');
-  msg('ch_leitstand', 27, 'Greta Simon', 'Katakomben: alles ruhig, K4 bleibt heute unbesetzt — wir kompensieren.');
+  msg('ch_leitstand', 9, 'Daniel Roth', 'Security ist auf dem Weg zum Finale, THE CIRCUS hält Abschnitt an.');
+  msg('ch_leitstand', 8, 'Marco Tanner', 'Verstanden, Timo hält Position. Gäste werden an C7 gestaut.');
+  msg('ch_leitstand', 27, 'Greta Simon', 'THE MINE: alles ruhig, M4 bleibt heute unbesetzt — wir kompensieren.');
   msg('ch_crew', 41, 'Daniel Roth', 'Starker Abend bis jetzt — denkt an eure Pausen und trinkt genug! 🎃');
   msg('ch_crew', 18, 'Sina Brandt', 'Catering Nord: Kürbissuppe ist da. Essensmarken nicht vergessen.');
-  msg(`ch_maze_${mazeIds.asylum}`, 13, 'Marco Tanner', 'A3: Strobo-Ausfall ist gemeldet, Technik kommt nach der nächsten Welle.');
-  msg(`ch_maze_${mazeIds.asylum}`, 12, 'Lena Krause', 'Danke! Solange spiele ich mit der Taschenlampe.');
+  msg(`ch_maze_${mazeIds.circus}`, 13, 'Marco Tanner', 'C3: Strobo-Ausfall ist gemeldet, Technik kommt nach der nächsten Welle.');
+  msg(`ch_maze_${mazeIds.circus}`, 12, 'Lena Krause', 'Danke! Solange spiele ich mit der Taschenlampe.');
 
   // ───────── Aufgaben (Dispatch-Demo) ─────────
   const task = (idv, minAgo, title, opts = {}) => {
@@ -399,41 +473,41 @@ export function seedDemo(db) {
       history: [{ t, time: hhmm(t), who: opts.by || 'Daniel Roth', action: 'erstellt' }],
     });
   };
-  task('t_strobo', 10, 'Ersatz-Stroboskop zu A3 bringen und anschließen', {
-    prio: 'hoch', critical: true, status: 'in_arbeit', maze: 'asylum', who: 'Marco Tanner',
+  task('t_strobo', 10, 'Ersatz-Stroboskop zu C3 (Manege) bringen und anschließen', {
+    prio: 'hoch', critical: true, status: 'in_arbeit', maze: 'circus', who: 'Marco Tanner',
     desc: 'Ausfall gemeldet 21:36 — Ersatzgerät liegt im Technik-Lager, Regal B.', deadline: hhmm(rel(-20)), phase: 'live',
   });
   task('t_funk', 25, 'Ersatz-Funkgerät an Eingang Süd ausgeben', {
     prio: 'hoch', status: 'offen', deadline: hhmm(rel(10)), phase: 'live', // überfällig (Demo)
     desc: 'Defektes Gerät einsammeln und ins Lager legen.',
   });
-  task('t_absperr', 4, 'Absperrung im Keller (A8) prüfen und verstärken', {
-    prio: 'hoch', critical: true, status: 'offen', maze: 'asylum', phase: 'live',
+  task('t_absperr', 4, 'Absperrung im Finale (C8) prüfen und verstärken', {
+    prio: 'hoch', critical: true, status: 'offen', maze: 'circus', phase: 'live',
     desc: 'Nach Gast-Durchbruch: Kabelbinder + zweite Stange aus dem Lager.',
   });
-  task('t_wasser', 40, 'Wasserflaschen an Katakomben-Positionen verteilen', {
-    prio: 'niedrig', status: 'angenommen', maze: 'kata', who: 'Greta Simon', phase: 'live',
+  task('t_wasser', 40, 'Wasserflaschen an THE MINE-Positionen verteilen', {
+    prio: 'niedrig', status: 'angenommen', maze: 'mine', who: 'Greta Simon', phase: 'live',
   });
   task('t_nebel', 70, 'Nebelfluid-Reserve in alle Mazes bringen', {
     prio: 'normal', status: 'erledigt', who: 'Karim Said', phase: 'live',
   });
-  task('t_blockiert', 33, 'Lautsprecher Seuchendorf-Gasse neu ausrichten', {
-    prio: 'normal', status: 'blockiert', maze: 'seuche', who: 'Viktor Berg', phase: 'live',
-    note: 'Leiter ist im Kettensäge-Lager eingeschlossen — Schlüssel fehlt.',
+  task('t_blockiert', 33, 'Lautsprecher The Street neu ausrichten', {
+    prio: 'normal', status: 'blockiert', maze: 'street', who: 'Viktor Berg', phase: 'live',
+    note: 'Leiter ist im Lager eingeschlossen — Schlüssel fehlt.',
   });
   task('t_fundsachen', 5, 'Fundsachen-Kiste am Ausgang aufstellen', { prio: 'niedrig', status: 'offen', phase: 'abschluss' });
   task('t_sweep', 6, 'Abschluss-Sweep-Plan an alle Leads verteilen', { prio: 'normal', status: 'offen', phase: 'abschluss' });
   task('t_banner', 200, 'Einlass-Banner „Welle 40+“ aufhängen', { prio: 'normal', status: 'bestätigt', phase: 'aufbau', who: 'Jonas Weber' });
 
   // ───────── Checklisten (Rundgänge) ─────────
-  // Je Maze: Sicherheit (Pflicht!) + Aufbau. Asylum: 1 Pflichtpunkt offen → Dashboard zeigt „nicht bereit“.
+  // Je Maze: Sicherheit (Pflicht!) + Aufbau. THE CIRCUS: 1 Pflichtpunkt offen → Dashboard zeigt „nicht bereit”.
   let clN = 0;
   for (const m of db.all('mazes')) {
     for (const type of ['sicherheit', 'aufbau']) {
       const idv = `cl_${type}_${m.id}`;
-      const allDone = !(type === 'sicherheit' && m.id === mazeIds.asylum);
+      const allDone = !(type === 'sicherheit' && m.id === mazeIds.circus);
       const items = CHECKLIST_TEMPLATES[type].map(([text, mandatory], i) => {
-        // Asylum-Sicherheit: Funkcheck (Pflicht) noch offen
+        // THE CIRCUS-Sicherheit: Funkcheck (Pflicht) noch offen
         const done = allDone ? true : !(mandatory && text.startsWith('Funkcheck'));
         return {
           id: `i${i + 1}`, text, mandatory, done,
@@ -452,7 +526,7 @@ export function seedDemo(db) {
   }
 
   // Entscheidungslog-Beispiel
-  feedItem(8, '📌 Entscheidung: Keller-Abschnitt (A8) bleibt offen, Security postiert sich an der Absperrung.', 'entscheidung', 'info', 'Daniel Roth', 'asylum');
+  feedItem(8, '📌 Entscheidung: Finale-Abschnitt (C8) bleibt offen, Security postiert sich an der Absperrung.', 'entscheidung', 'info', 'Daniel Roth', 'circus');
 
   // ───────── Kids Day Konfiguration ─────────
   const eventDate = `${new Date().getFullYear()}-10-31`;
@@ -468,24 +542,29 @@ export function seedDemo(db) {
     ],
     defaultIntensity: 'leicht',
     mazeConfigs: [
-      { mazeId: mazeIds.asylum, intensity: 'leicht', maxGroupSize: 8, specialRules: 'Kein Stroboskop, Nebel minimal' },
-      { mazeId: mazeIds.saege, intensity: 'mittel', maxGroupSize: 6, specialRules: 'Kettensaege nur Attrappe, kein Motorstart' },
-      { mazeId: mazeIds.kata, intensity: 'leicht', maxGroupSize: 10, specialRules: 'Beleuchtung erhoehen' },
-      { mazeId: mazeIds.puppen, intensity: 'leicht', maxGroupSize: 8, specialRules: null },
-      { mazeId: mazeIds.seuche, intensity: 'aus', maxGroupSize: 0, specialRules: 'Zu intensiv fuer Kids Day — geschlossen' },
+      { mazeId: mazeIds.circus,   intensity: 'leicht', maxGroupSize: 10, kidsDayName: 'FAIRYWOOD',
+        specialRules: 'FAIRYWOOD-Deko aktiv — Clown-Masken abnehmen' },
+      { mazeId: mazeIds.zombie,   intensity: 'mittel', maxGroupSize: 8,
+        specialRules: 'Keine Kettensäge, Train-Geräusche auf 50%' },
+      { mazeId: mazeIds.mine,     intensity: 'leicht', maxGroupSize: 10,
+        specialRules: 'Lichtniveau erhöhen, Druckluft-Effekte deaktivieren' },
+      { mazeId: mazeIds.blackout, intensity: 'aus',    maxGroupSize: 0,
+        specialRules: 'Zu dunkel — für Kids Day geschlossen' },
+      { mazeId: mazeIds.street,   intensity: 'leicht', maxGroupSize: null,
+        specialRules: 'Nur leichte Scares, Kostüme ohne blutige Elemente' },
     ],
     safetyBriefingRequired: true,
     parentStations: [
       { name: 'Eltern-Lounge Eingang', location: 'Neben dem Einlass' },
-      { name: 'Eltern-Treffpunkt Mitte', location: 'Zwischen Asylum und Katakomben' },
+      { name: 'Eltern-Treffpunkt Mitte', location: 'Zwischen THE CIRCUS und THE MINE' },
     ],
     emergencyProtocol: 'Bei Notfall: Kind beruhigen, Eltern informieren, Erste Hilfe alarmieren.',
   };
   db.patch('settings', 'main', { kidsDay });
 
   // ───────── Kids Day Checklisten (Instanzen) ─────────
-  // Asylum: kidsday_sicherheit (fast komplett, 1 Punkt offen)
-  const kdSichAsylumItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => {
+  // THE CIRCUS: kidsday_sicherheit (fast komplett, 1 Punkt offen)
+  const kdSichCircusItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => {
     const done = !(mandatory && text.startsWith('Funktest'));
     return {
       id: `i${i + 1}`, text, mandatory, done,
@@ -493,37 +572,37 @@ export function seedDemo(db) {
       doneAt: done ? rel(45 - i) : null,
     };
   });
-  db.put('checklists', 'cl_kdsich_asylum', {
-    id: 'cl_kdsich_asylum', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
-    mazeId: mazeIds.asylum, items: kdSichAsylumItems,
+  db.put('checklists', 'cl_kdsich_circus', {
+    id: 'cl_kdsich_circus', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
+    mazeId: mazeIds.circus, items: kdSichCircusItems,
     createdBy: 'Daniel Roth', createdAt: iso(),
     startedBy: 'Marco Tanner',
     completedAt: null,
   });
 
-  // Katakomben: kidsday_sicherheit (komplett)
-  const kdSichKataItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => ({
+  // THE MINE: kidsday_sicherheit (komplett)
+  const kdSichMineItems = CHECKLIST_TEMPLATES.kidsday_sicherheit.map(([text, mandatory], i) => ({
     id: `i${i + 1}`, text, mandatory, done: true,
     doneBy: 'Greta Simon',
     doneAt: rel(60 - i),
   }));
-  db.put('checklists', 'cl_kdsich_kata', {
-    id: 'cl_kdsich_kata', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
-    mazeId: mazeIds.kata, items: kdSichKataItems,
+  db.put('checklists', 'cl_kdsich_mine', {
+    id: 'cl_kdsich_mine', type: 'kidsday_sicherheit', title: 'Kids Day Sicherheit-Rundgang',
+    mazeId: mazeIds.mine, items: kdSichMineItems,
     createdBy: 'Daniel Roth', createdAt: iso(),
     startedBy: 'Greta Simon',
     completedAt: rel(50),
   });
 
-  // Asylum: kidsday_preshow (komplett)
-  const kdPreAsylumItems = CHECKLIST_TEMPLATES.kidsday_preshow.map(([text, mandatory], i) => ({
+  // THE CIRCUS: kidsday_preshow (komplett)
+  const kdPreCircusItems = CHECKLIST_TEMPLATES.kidsday_preshow.map(([text, mandatory], i) => ({
     id: `i${i + 1}`, text, mandatory, done: true,
     doneBy: 'Marco Tanner',
     doneAt: rel(30 - i),
   }));
-  db.put('checklists', 'cl_kdpre_asylum', {
-    id: 'cl_kdpre_asylum', type: 'kidsday_preshow', title: 'Kids Day Vorbereitung-Rundgang',
-    mazeId: mazeIds.asylum, items: kdPreAsylumItems,
+  db.put('checklists', 'cl_kdpre_circus', {
+    id: 'cl_kdpre_circus', type: 'kidsday_preshow', title: 'Kids Day Vorbereitung-Rundgang',
+    mazeId: mazeIds.circus, items: kdPreCircusItems,
     createdBy: 'Daniel Roth', createdAt: iso(),
     startedBy: 'Marco Tanner',
     completedAt: rel(22),
@@ -556,11 +635,11 @@ export function seedDemo(db) {
     visibility: 'alle',
     pinned: true,
     content: 'Der Lageplan zeigt alle fuenf Mazes, Service-Zonen und Notausgaenge des Gelaendes.\n\n' +
-      'Notausgaenge befinden sich an folgenden Punkten: Asylum Suedseite (hinter Keller), Kettensaege Westtor, ' +
-      'Katakomben Treppenaufgang Nord, Puppenhaus Hinterausgang, Seuchendorf Hauptgasse Ende. ' +
+      'Notausgaenge befinden sich an folgenden Punkten: THE CIRCUS Suedseite (Eduardschacht), ZOMBIETRAIN Westtor, ' +
+      'THE MINE Treppenaufgang Nord (KAUE EG), BLACKOUT Hinterausgang (KAUE OG), The Street Hauptachse Ende. ' +
       'Alle Ausgaenge sind mit gruenen LED-Streifen am Boden markiert und per Panikschloss zu oeffnen.\n\n' +
-      'Service-Zonen: Einlass/Kassen im Nordosten, Backstage/Crew mittig-ost, Catering suedost, ' +
-      'Security-Punkt Sued im Suedosten. Die Erweiterungsflaeche West ist 2027 reserviert.',
+      'Service-Zonen: Einlass/Kassen Mitte-Sued, Backstage/Crew links-mitte, Catering links-sued, ' +
+      'Security-Punkt rechts-sued. THE CIRCUS (Eduardschacht) und The Street sind Aussenflaechen.',
     createdAt: now(),
     createdBy: 'Daniel Roth',
     updatedAt: now(),

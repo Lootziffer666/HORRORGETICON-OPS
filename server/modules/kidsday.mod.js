@@ -115,6 +115,7 @@ export default {
         return {
           mazeId: m.id,
           name: m.name,
+          kidsDayName: mc?.kidsDayName || null,
           intensity: mc ? mc.intensity : cfg.defaultIntensity,
           maxGroupSize: mc ? mc.maxGroupSize : null,
           specialRules: mc ? mc.specialRules : null,
@@ -133,11 +134,13 @@ export default {
       const cfg = getConfig();
       const configs = [...(cfg.mazeConfigs || [])];
       const idx = configs.findIndex((c) => c.mazeId === ctx.params.id);
+      const existing = configs[idx] || {};
       const entry = {
         mazeId: ctx.params.id,
         intensity: intensity || cfg.defaultIntensity,
-        maxGroupSize: ctx.body.maxGroupSize || null,
-        specialRules: ctx.body.specialRules || null,
+        maxGroupSize: ctx.body.maxGroupSize !== undefined ? ctx.body.maxGroupSize : (existing.maxGroupSize || null),
+        specialRules: ctx.body.specialRules !== undefined ? ctx.body.specialRules : (existing.specialRules || null),
+        kidsDayName: ctx.body.kidsDayName !== undefined ? (ctx.body.kidsDayName || null) : (existing.kidsDayName || null),
       };
       if (idx >= 0) configs[idx] = entry;
       else configs.push(entry);
