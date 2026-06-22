@@ -156,6 +156,14 @@ export default {
       const besetzt = positions.filter((p) => p.assignedPersonId &&
         presenceStatus(db, p.assignedPersonId) !== 'out').length;
 
+      const settings = db.get('settings', 'main') || {};
+      const kdCfgMap = {};
+      if (settings.kidsDay?.enabled) {
+        for (const mc of settings.kidsDay.mazeConfigs || []) {
+          if (mc.kidsDayName) kdCfgMap[mc.mazeId] = mc.kidsDayName;
+        }
+      }
+
       const mazes = db.all('mazes').sort((a, b) => (a.order || 0) - (b.order || 0)).map((m) => {
         const pos = positions.filter((p) => p.mazeId === m.id);
         const onSite = pos.filter((p) => p.assignedPersonId && presenceStatus(db, p.assignedPersonId) !== 'out');
@@ -164,8 +172,9 @@ export default {
           pos.some((p) => p.assignedPersonId === b.personId));
         const st = incidents.some((i) => i.prio === 'hoch') ? 'err'
           : (incidents.length || onSite.length < pos.length * 0.8) ? 'warn' : 'ok';
+        const displayName = kdCfgMap[m.id] || m.name;
         return {
-          id: m.id, name: m.name, short: m.short, zone: m.zone,
+          id: m.id, name: displayName, short: m.short, zone: m.zone,
           total: pos.length, besetzt: onSite.length, vorfaelle: incidents.length, pausen: breaks.length,
           status: st,
           meta: incidents.length ? `${onSite.length}/${pos.length} · ${incidents.length} Vorfall${incidents.length > 1 ? 'e' : ''}`
@@ -223,7 +232,12 @@ export default {
           };
         });
       const incidents = db.find('incidents', (i) => i.mazeId === m.id && i.status !== 'erledigt');
-      return { id: m.id, name: m.name, short: m.short, rooms: m.rooms || [], lead: db.get('people', m.leadPersonId)?.name || null, positions: pos, incidents };
+      const settings = db.get('settings', 'main') || {};
+      const kdCfg = settings.kidsDay?.enabled
+        ? (settings.kidsDay.mazeConfigs || []).find((c) => c.mazeId === m.id)
+        : null;
+      const displayName = kdCfg?.kidsDayName || m.name;
+      return { id: m.id, name: displayName, short: m.short, rooms: m.rooms || [], lead: db.get('people', m.leadPersonId)?.name || null, positions: pos, incidents };
     });
   },
 };
