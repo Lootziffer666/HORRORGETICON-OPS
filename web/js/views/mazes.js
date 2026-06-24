@@ -59,6 +59,8 @@ export async function mazesView({ onCleanup, refresh }) {
         `${mazes.length} Mazes · ${details.reduce((s, d) => s + d.positions.length, 0)} Positionen · per Drag & Drop einer Position zuordnen`),
       issues.doubles.length > 0 && badge('err', `${issues.doubles.length} Doppel-Zuteilung(en)!`, { dot: true }),
       h('div', { style: { flex: 1 } }),
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/import/template/zuteilung') }, ic('doc', 14), 'Vorlage'),
+      h('button', { class: 'btn sm quiet', onclick: () => zuteilungImportSheet(refresh) }, ic('upload', 14), 'Zuteilung importieren'),
       h('button', { class: 'btn sm quiet', onclick: () => download('/api/csv/export/zuteilung') }, ic('download', 14), 'Zuteilung exportieren'),
       h('button', { class: 'btn sm quiet', onclick: () => mazeSheet(null, refresh) }, ic('plus', 14), 'Maze'),
       h('button', { class: 'btn sm orange', onclick: () => positionSheet(mazes, refresh) }, ic('plus', 14), 'Position')),
@@ -153,4 +155,89 @@ function positionSheet(mazes, refresh) {
           },
         }, 'Anlegen'))),
   });
+}
+
+
+// ───────── Zuteilungs-Import (Universal) ─────────
+// Ordnet bestehende Personen Positionen zu: aus Excel, CSV, kopierter Tabelle oder Freitext.
+const ZUT_ACCEPT = '.csv,.tsv,.txt,.xlsx,.htm,.html,.eml,text/*,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin);
+}
+
+function zuteilungImportSheet(refresh) {
+  let fileData = null; // { base64, filename }
+  const ta = h('textarea', {
+    rows: 6,
+    placeholder: 'Tabelle einfügen oder Datei wählen.\nSpalten: Maze · Position · Person (Name) und/oder Code\n\nBeispiel:\nTHE CIRCUS;C6;Pavel Novak;PN-1234',
+  });
+  const fileLabel = h('span', { class: 'sub' }, 'Keine Datei gewählt');
+  const file = h('input', { type: 'file', accept: ZUT_ACCEPT, style: { display: 'none' } });
+  const preview = h('div');
+
+  const setFile = async (fl) => {
+    if (!fl) return;
+    fileData = { base64: await fileToBase64(fl), filename: fl.name };
+    fileLabel.textContent = `Datei: ${fl.name}`;
+    ta.value = ''; ta.setAttribute('disabled', 'true'); preview.replaceChildren();
+  };
+  const clearFile = () => { fileData = null; fileLabel.textContent = 'Keine Datei gewählt'; ta.removeAttribute('disabled'); };
+  file.addEventListener('change', () => setFile(file.files?.[0]));
+  ta.addEventListener('input', () => { if (fileData) clearFile(); });
+
+  const drop = h('div', { class: 'dropzone' },
+    ic('upload', 18, { color: 'var(--fg-muted)' }),
+    h('span', {}, 'Datei hierher ziehen — Excel · CSV · TSV · HTML · Textliste'),
+    fileLabel,
+    h('div', { class: 'row', style: { gap: '8px' } },
+      h('button', { class: 'btn sm quiet', onclick: () => file.click() }, ic('doc', 14), 'Datei wählen'),
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/import/template/zuteilung') }, ic('download', 14), 'Vorlage'),
+      file));
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); setFile(e.dataTransfer?.files?.[0]); });
+
+  const payload = (dryRun) => fileData ? { ...fileData, dryRun } : { text: ta.value, dryRun };
+
+  sheet({
+    title: 'Zuteilung importieren', icon: 'pin', tone: 'info', center: true,
+    sub: 'Bestehende Personen Positionen zuordnen. Erst Vorschau (ändert nichts), dann anwenden.',
+    content: (close) => h('div', { class: 'col', style: { gap: '12px' } },
+      drop,
+      h('span', { class: 'overline' }, 'oder einfügen'),
+      h('div', { class: 'inp area' }, ta),
+      preview,
+      h('div', { class: 'row', style: { gap: '8px', justifyContent: 'flex-end' } },
+        h('button', { class: 'btn quiet', onclick: close }, 'Abbrechen'),
+        h('button', {
+          class: 'btn', onclick: () => act(async () => {
+            const r = await post('/api/import/zuteilung', payload(true));
+            preview.replaceChildren(zutPreviewBox(r));
+          }),
+        }, ic('eye', 15), 'Vorschau'),
+        h('button', {
+          class: 'btn orange', onclick: () => act(async () => {
+            const r = await post('/api/import/zuteilung', payload(false));
+            toast(`Zuteilung: ${r.angewendet} zugeordnet, ${r.fehler.length} Fehler`, r.fehler.length ? 'warn' : 'ok');
+            close(); refresh();
+          }),
+        }, ic('check', 15), 'Anwenden'))),
+  });
+}
+
+function zutPreviewBox(r) {
+  const fmt = { xlsx: 'Excel-Datei', delimited: 'Tabelle', html: 'HTML-Tabelle', freitext: 'Freitext', csv: 'CSV' }[r.format] || r.format;
+  return h('div', { class: 'card pad col', style: { gap: '6px', background: 'var(--bg-muted)', boxShadow: 'none', maxHeight: '220px', overflow: 'auto' } },
+    h('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } },
+      badge('info', `Erkannt: ${fmt}`),
+      h('span', { style: { fontSize: '13px', fontWeight: 700 } }, `${r.zugeordnet.length} zugeordnet · ${r.fehler.length} Fehler`)),
+    ...(r.notes || []).map((n) => h('span', { class: 'sub' }, n)),
+    ...r.zugeordnet.slice(0, 8).map((e) => h('span', { class: 'sub' },
+      `→ ${e.person} (${e.code}) → ${e.maze} ${e.position}${e.warnungen?.length ? ` · ⚠ ${e.warnungen.join(', ')}` : ''}`)),
+    ...r.fehler.slice(0, 8).map((e) => h('span', { class: 'sub danger-text' }, `✘ Zeile ${e.zeile}: ${e.grund}`)));
 }

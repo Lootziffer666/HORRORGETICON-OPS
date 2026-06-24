@@ -19,6 +19,14 @@ const PEOPLE_SYNONYMS = {
   position: ['position', 'pos', 'platz'],
 };
 
+// Zuteilungs-Import: ordnet bestehende Personen Positionen zu (Person via Code ODER Name).
+const ASSIGN_SYNONYMS = {
+  name: ['person', 'name', 'teilnehmer', 'vollername'],
+  personCode: ['code', 'personalcode', 'kuerzel', 'personcode'],
+  maze: ['maze', 'labyrinth', 'bereich'],
+  position: ['position', 'pos', 'platz'],
+};
+
 export default {
   name: 'csv',
   title: 'CSV-Import/-Export',
@@ -124,6 +132,62 @@ export default {
       const applied = applyPeople(db, bus, feed, ctx, result, 'Import');
       return { dryRun: false, angewendet: applied, ...result };
     }, { roles: ['management'] });
+
+    // Universal-Import Zuteilung: ordnet bestehende Personen Positionen zu (Excel/CSV/TSV/HTML/Freitext).
+    // Benötigt Spalten Maze + Position und Person ODER Code. dryRun=true → Vorschau.
+    post('/api/import/zuteilung', async (ctx) => {
+      const { text = '', base64 = '', filename = '' } = ctx.body || {};
+      if (!String(text).trim() && !base64) bad('Kein Inhalt — Text einfügen oder Datei wählen');
+
+      const parsed = universalParse({ text, base64, filename });
+      if (parsed.format === 'unsupported') bad(parsed.notes[0] || 'Format wird nicht unterstützt');
+
+      const map = mapHeader(parsed.header, ASSIGN_SYNONYMS);
+      if (map.maze === undefined || map.position === undefined) {
+        bad(`Spalten „Maze" und „Position" werden benötigt. Erkannte Spalten: ${parsed.header.join(', ') || '(keine)'}`);
+      }
+      if (map.name === undefined && map.personCode === undefined) {
+        bad(`Spalte „Person" oder „Code" wird benötigt. Erkannte Spalten: ${parsed.header.join(', ')}`);
+      }
+      const result = buildAssignPreview(db, map, parsed.rows);
+      result.format = parsed.format;
+      result.notes = parsed.notes;
+      if (ctx.body.dryRun !== false) return { dryRun: true, ...result };
+      const applied = applyAssignments(db, bus, feed, ctx, result);
+      return { dryRun: false, angewendet: applied, ...result };
+    }, { roles: ['management', 'lead'] });
+
+    // Vorlagen-Downloads: Excel-taugliche CSV mit Kopfzeile + Beispielzeilen aus echten Event-Daten.
+    get('/api/import/template/personen', async (ctx) => {
+      const maze = db.all('mazes').sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+      const openPos = maze
+        ? db.find('positions', (p) => p.mazeId === maze.id && !p.assignedPersonId)
+            .sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }))[0]
+        : null;
+      const mn = maze?.name || 'THE CIRCUS';
+      const pc = openPos?.code || 'C6';
+      return download(ctx, 'horrorgeticon-vorlage-personen.csv',
+        ['Name', 'Rolle', 'Status', 'Kontakt', 'Telefon', 'Ort', 'Maze', 'Position', 'Notizen'],
+        [
+          ['Erika Musterfrau', 'Scare Actor', 'aktiv', 'erika@example.com', '0151 1234567', 'Aachen', mn, pc, 'Beispielzeile — vor dem Import löschen'],
+          ['Max Beispiel', 'Springer', 'angefragt', 'max@example.com', '', 'Eschweiler', '', '', 'ohne feste Position'],
+          ['Tom Lead+Catering', 'Maze Lead+Catering', 'aktiv', '', '', '', '', '', 'mehrere Rollen mit + trennen'],
+        ]);
+    }, { roles: ['management', 'lead'] });
+
+    get('/api/import/template/zuteilung', async (ctx) => {
+      const rows = [];
+      for (const m of db.all('mazes').sort((a, b) => (a.order || 0) - (b.order || 0))) {
+        for (const p of db.find('positions', (x) => x.mazeId === m.id).sort((a, b) => a.code.localeCompare(b.code, 'de', { numeric: true }))) {
+          const person = p.assignedPersonId ? db.get('people', p.assignedPersonId) : null;
+          rows.push([m.name, p.code, person?.name || 'Name oder Code genügt', person?.code || '']);
+          if (rows.length >= 4) break;
+        }
+        if (rows.length >= 4) break;
+      }
+      if (!rows.length) rows.push(['THE CIRCUS', 'C6', 'Erika Musterfrau', 'EM-1234']);
+      return download(ctx, 'horrorgeticon-vorlage-zuteilung.csv', ['Maze', 'Position', 'Person', 'Code'], rows);
+    }, { roles: ['management', 'lead'] });
   },
 };
 
@@ -201,5 +265,50 @@ function applyPeople(db, bus, feed, ctx, result, sourceLabel) {
   feed(`📥 ${sourceLabel}: ${result.neu.length} neu, ${result.aktualisiert.length} aktualisiert, ${result.fehler.length} Fehler.`, { kind: 'system', by: ctx.person.name });
   bus.publish('people.changed', {});
   bus.publish('maze.changed', {});
+  return applied;
+}
+
+// Baut die Zuteilungs-Vorschau: löst Maze, Position und Person (per Code ODER Name) auf.
+function buildAssignPreview(db, map, rows) {
+  const get_ = (row, key) => map[key] !== undefined ? String(row[map[key]] ?? '').trim() : '';
+  const result = { zugeordnet: [], fehler: [], zeilen: rows.length };
+  for (let n = 0; n < rows.length; n++) {
+    const row = rows[n];
+    const zeile = n + 2;
+    const mazeName = get_(row, 'maze');
+    const posCode = get_(row, 'position').toUpperCase();
+    const pcode = get_(row, 'personCode').toUpperCase();
+    const pname = get_(row, 'name');
+    if (!mazeName || !posCode) { result.fehler.push({ zeile, grund: 'Maze oder Position fehlt' }); continue; }
+    const maze = db.one('mazes', (m) => m.name.toLowerCase() === mazeName.toLowerCase());
+    if (!maze) { result.fehler.push({ zeile, grund: `Maze „${mazeName}" nicht gefunden` }); continue; }
+    const pos = db.one('positions', (p) => p.mazeId === maze.id && p.code === posCode);
+    if (!pos) { result.fehler.push({ zeile, grund: `Position ${posCode} in „${maze.name}" nicht gefunden` }); continue; }
+    const person = (pcode && db.one('people', (p) => (p.code || '').toUpperCase() === pcode))
+      || (pname && db.one('people', (p) => p.name.toLowerCase() === pname.toLowerCase()));
+    if (!person) { result.fehler.push({ zeile, grund: `Person „${pcode || pname || '(leer)'}" nicht gefunden` }); continue; }
+    if (person.status !== 'aktiv') { result.fehler.push({ zeile, grund: `${person.name} ist nicht aktiv (${person.status})` }); continue; }
+    const warnungen = [];
+    if (pos.assignedPersonId && pos.assignedPersonId !== person.id) {
+      warnungen.push(`überschreibt ${db.get('people', pos.assignedPersonId)?.name || 'bisherige Besetzung'}`);
+    }
+    result.zugeordnet.push({ zeile, personId: person.id, person: person.name, code: person.code, positionId: pos.id, maze: maze.name, position: pos.code, warnungen });
+  }
+  return result;
+}
+
+// Wendet die Zuteilung an (löst Person von alten Positionen, besetzt Zielposition) — wie /assign.
+function applyAssignments(db, bus, feed, ctx, result) {
+  let applied = 0;
+  for (const e of result.zugeordnet) {
+    for (const other of db.find('positions', (x) => x.assignedPersonId === e.personId && x.id !== e.positionId)) {
+      db.patch('positions', other.id, { assignedPersonId: null });
+    }
+    db.patch('positions', e.positionId, { assignedPersonId: e.personId, assignedAt: iso(), assignedBy: `Import (${ctx.person.name})` });
+    applied++;
+  }
+  feed(`📍 Zuteilungs-Import: ${result.zugeordnet.length} zugeordnet, ${result.fehler.length} Fehler.`, { kind: 'zuteilung', by: ctx.person.name });
+  bus.publish('maze.changed', {});
+  bus.publish('people.changed', {});
   return applied;
 }

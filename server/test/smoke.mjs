@@ -236,6 +236,29 @@ try {
   const impForbidden = await api('POST', '/api/import/personen', { token: actor.token, body: { text: 'Name\nNiemand', dryRun: true } });
   ok(impForbidden.status === 403, 'Actor darf nicht importieren (403)');
 
+  section('Zuteilungs-Import & Vorlagen-Downloads');
+  // Vorlagen herunterladbar (Excel-taugliche CSV mit Kopfzeile)
+  const tplP = (await api('GET', '/api/import/template/personen', { token: mgmt.token })).text;
+  ok(tplP.includes('Name') && tplP.includes('Maze') && tplP.includes('Position'), 'Vorlage „Personen" herunterladbar (CSV mit Kopfzeile)');
+  const tplZ = (await api('GET', '/api/import/template/zuteilung', { token: mgmt.token })).text;
+  ok(tplZ.includes('Maze') && tplZ.includes('Position') && tplZ.includes('Code'), 'Vorlage „Zuteilung" herunterladbar');
+  // Zuteilung importieren: bestehende Person (Import Tester, aktiv) auf eine Position in THE CIRCUS
+  const zutText = 'Maze;Position;Person;Code\nTHE CIRCUS;C7;Import Tester;\nUnbekanntesMaze;X1;Import Tester;\nTHE CIRCUS;C2;Gibtsnicht Person;';
+  const zutDry = (await api('POST', '/api/import/zuteilung', { token: mgmt.token, body: { text: zutText, dryRun: true } })).json;
+  ok(zutDry.dryRun && zutDry.zugeordnet.length === 1 && zutDry.fehler.length === 2,
+    `Zuteilungs-Vorschau (${zutDry.zugeordnet.length} zugeordnet, ${zutDry.fehler.length} Fehler)`);
+  const zutApply = (await api('POST', '/api/import/zuteilung', { token: mgmt.token, body: { text: zutText, dryRun: false } })).json;
+  ok(zutApply.angewendet === 1, `Zuteilung angewendet (${zutApply.angewendet})`);
+  const circusDetail = (await api('GET', `/api/mazes/${circus.id}`, { token: mgmt.token })).json;
+  const c7 = circusDetail.positions.find((p) => p.code === 'C7');
+  ok(c7?.person?.name === 'Import Tester', 'Position C7 trägt jetzt die importierte Zuteilung');
+  // Fehlende Pflichtspalten → klare Ablehnung
+  const zutBad = await api('POST', '/api/import/zuteilung', { token: mgmt.token, body: { text: 'Name\nNur Name', dryRun: true } });
+  ok(zutBad.status === 400, 'Zuteilungs-Import ohne Maze/Position abgelehnt (400)');
+  // Actor darf nicht zuteilen-importieren? Lead schon (wie /assign) — Actor nicht
+  const zutActor = await api('POST', '/api/import/zuteilung', { token: actor.token, body: { text: zutText, dryRun: true } });
+  ok(zutActor.status === 403, 'Actor darf keine Zuteilung importieren (403)');
+
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
   ok(cols.some((c) => c.name === 'people') && cols.some((c) => c.protected), `Collections (${cols.length})`);

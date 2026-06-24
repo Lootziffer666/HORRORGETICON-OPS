@@ -247,7 +247,9 @@ function universalImportSheet(refresh) {
     h('span', {}, 'Datei hierher ziehen — Excel · CSV · TSV · HTML · E-Mail · Textliste'),
     fileLabel,
     h('div', { class: 'row', style: { gap: '8px' } },
-      h('button', { class: 'btn sm quiet', onclick: () => file.click() }, ic('doc', 14), 'Datei wählen'), file));
+      h('button', { class: 'btn sm quiet', onclick: () => file.click() }, ic('doc', 14), 'Datei wählen'),
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/import/template/personen') }, ic('download', 14), 'Vorlage'),
+      file));
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', (e) => {
