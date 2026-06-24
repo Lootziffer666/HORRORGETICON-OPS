@@ -259,6 +259,12 @@ try {
   const zutActor = await api('POST', '/api/import/zuteilung', { token: actor.token, body: { text: zutText, dryRun: true } });
   ok(zutActor.status === 403, 'Actor darf keine Zuteilung importieren (403)');
 
+  section('Vor-Ort-Start: Netz-Infos & Beitritts-QR');
+  const net = (await api('GET', '/api/net/info')).json; // offen, ohne Login
+  ok(net && typeof net.port === 'number' && Array.isArray(net.urls), 'Netz-Infos offen abrufbar (ohne Login)');
+  ok(typeof net.joinUrl === 'string' && net.joinUrl.startsWith('http'), `Beitritts-URL vorhanden (${net.joinUrl})`);
+  ok(typeof net.qrSvg === 'string' && net.qrSvg.includes('<svg') && net.qrSvg.includes('</svg>'), 'Beitritts-QR als SVG erzeugt');
+
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
   ok(cols.some((c) => c.name === 'people') && cols.some((c) => c.protected), `Collections (${cols.length})`);
