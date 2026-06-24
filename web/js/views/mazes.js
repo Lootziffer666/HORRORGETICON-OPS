@@ -79,7 +79,7 @@ export async function mazesView({ onCleanup, refresh }) {
           ic('door', 15, { color: 'var(--fg-muted)' }),
           h('div', { class: 'col', style: { gap: 0 } },
             h('span', { class: 't' }, d.name),
-            h('span', { class: 'sub', style: { fontSize: '10.5px' } }, d.lead ? `Lead: ${d.lead}` : 'kein Lead')),
+            h('span', { class: 'sub', style: { fontSize: '10.5px' } }, [d.lead ? `Lead: ${d.lead}` : 'kein Lead', d.callTime ? `🕒 Ruf ${d.callTime}` : null].filter(Boolean).join(' · '))),
           badge(d.besetzt === d.positionen ? 'ok' : 'warn', `${d.besetzt} / ${d.positionen}`)),
         h('div', { class: 'panel-b scroll', style: { gap: 0, paddingTop: '2px' } },
           d.positions.map((pos) => posRow(pos, d)))))));
@@ -109,20 +109,23 @@ function mazeSheet(d, refresh) {
   const isNew = !d;
   const name = h('input', { value: d?.name || '', placeholder: 'z. B. Hexenwald' });
   const short = h('input', { value: d?.short || '', placeholder: 'H' });
+  const callTime = h('input', { value: d?.callTime || '', placeholder: 'z. B. 17:15', inputmode: 'numeric' });
   sheet({
     title: isNew ? 'Maze anlegen' : `${d.name} bearbeiten`, icon: 'door', tone: 'info', center: true,
     content: (close) => h('div', { class: 'col', style: { gap: '12px' } },
       h('div', { class: 'grid2' },
         h('label', { class: 'fld' }, 'Name', h('div', { class: 'inp' }, name)),
         h('label', { class: 'fld' }, 'Kürzel', h('div', { class: 'inp' }, short))),
-      h('span', { class: 'sub' }, 'Positionen entstehen über „+ Position“; Raum-Pins lassen sich in der DB-Pflege fein justieren.'),
+      h('label', { class: 'fld' }, 'Rufzeit (wann muss die Crew dieser Maze da sein?)', h('div', { class: 'inp' }, callTime)),
+      h('span', { class: 'sub' }, 'Gestaffelte Rufzeiten statt „alle gleichzeitig" — jeder Actor sieht in seiner App seine Zeit. Positionen entstehen über „+ Position“.'),
       h('div', { class: 'row', style: { justifyContent: 'flex-end', gap: '8px' } },
         h('button', { class: 'btn quiet', onclick: close }, 'Abbrechen'),
         h('button', {
           class: 'btn orange',
           onclick: () => act(async () => {
-            if (isNew) await post('/api/mazes', { name: name.value.trim(), short: short.value.trim() });
-            else await patch(`/api/mazes/${d.id}`, { name: name.value.trim(), short: short.value.trim() });
+            const body = { name: name.value.trim(), short: short.value.trim(), callTime: callTime.value.trim() };
+            if (isNew) await post('/api/mazes', body);
+            else await patch(`/api/mazes/${d.id}`, body);
             close(); refresh();
           }, 'Gespeichert'),
         }, 'Speichern'))),

@@ -289,6 +289,20 @@ try {
   const fbActor = await api('GET', '/api/reports/fallback', { token: actor.token });
   ok(fbActor.status === 403, 'Actor darf das Notfall-Paket nicht erzeugen (403)');
 
+  section('Gestaffelte Rufzeiten (gegen den 16-Uhr-Zwang)');
+  const mazesNow = (await api('GET', '/api/mazes', { token: mgmt.token })).json;
+  const circusNow = mazesNow.find((m) => m.name === 'THE CIRCUS');
+  ok(circusNow?.callTime === '17:15', `Seed: THE CIRCUS hat gestaffelte Rufzeit (${circusNow?.callTime})`);
+  ok(mazesNow.filter((m) => m.callTime).length === 5, 'Alle 5 Mazes haben gestaffelte Rufzeiten');
+  const ctPatch = (await api('PATCH', `/api/mazes/${circusNow.id}`, { token: mgmt.token, body: { callTime: '16:45' } })).json;
+  ok(ctPatch.callTime === '16:45', 'Rufzeit per PATCH geändert');
+  const ctBad = await api('PATCH', `/api/mazes/${circusNow.id}`, { token: mgmt.token, body: { callTime: '99:99' } });
+  ok(ctBad.status === 400, 'Ungültige Rufzeit abgelehnt (400)');
+  const ovRuf = (await api('GET', '/api/live/overview', { token: mgmt.token })).json;
+  const circusPerson = ovRuf.people.find((p) => p.maze === 'THE CIRCUS');
+  ok(circusPerson && circusPerson.callTime === '16:45', 'Actor sieht persönliche Rufzeit seiner Maze im Lagebild');
+  await api('PATCH', `/api/mazes/${circusNow.id}`, { token: mgmt.token, body: { callTime: '17:15' } });
+
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
   ok(cols.some((c) => c.name === 'people') && cols.some((c) => c.protected), `Collections (${cols.length})`);

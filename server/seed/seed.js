@@ -38,7 +38,7 @@ export function seedDemo(db) {
   // THE MINE (KAUE EG), BLACKOUT (KAUE OG), The Street (Außenbereich)
   const mazes = [
     {
-      key: 'circus', name: 'THE CIRCUS', short: 'C', order: 1,
+      key: 'circus', name: 'THE CIRCUS', short: 'C', order: 1, callTime: '17:15',
       zone: { x: '33%', y: '3%', w: '22%', h: '27%' },
       rooms: [
         { n: 'Eingangstor',     x: '4%',  y: '35%', w: '18%', h: '22%' },
@@ -61,7 +61,7 @@ export function seedDemo(db) {
       ],
     },
     {
-      key: 'zombie', name: 'ZOMBIETRAIN', short: 'Z', order: 2,
+      key: 'zombie', name: 'ZOMBIETRAIN', short: 'Z', order: 2, callTime: '17:30',
       zone: { x: '16%', y: '8%', w: '16%', h: '28%' },
       rooms: [
         { n: 'Bahnsteig',     x: '62%', y: '55%', w: '35%', h: '40%' },
@@ -83,7 +83,7 @@ export function seedDemo(db) {
       ],
     },
     {
-      key: 'mine', name: 'THE MINE', short: 'M', order: 3,
+      key: 'mine', name: 'THE MINE', short: 'M', order: 3, callTime: '17:00',
       zone: { x: '64%', y: '5%', w: '30%', h: '28%' },
       rooms: [
         { n: 'Eingang Schacht', x: '4%',  y: '70%', w: '32%', h: '26%' },
@@ -107,7 +107,7 @@ export function seedDemo(db) {
       ],
     },
     {
-      key: 'blackout', name: 'BLACKOUT', short: 'B', order: 4,
+      key: 'blackout', name: 'BLACKOUT', short: 'B', order: 4, callTime: '17:45',
       zone: { x: '64%', y: '35%', w: '30%', h: '28%' },
       rooms: [
         { n: 'Korridor',       x: '2%',  y: '44%', w: '92%', h: '8%',  hall: true },
@@ -128,7 +128,7 @@ export function seedDemo(db) {
       ],
     },
     {
-      key: 'street', name: 'The Street', short: 'T', order: 5,
+      key: 'street', name: 'The Street', short: 'T', order: 5, callTime: '17:30',
       zone: { x: '3%', y: '65%', w: '91%', h: '30%' },
       rooms: [
         { n: 'Westzugang',  x: '3%',  y: '30%', w: '20%', h: '38%' },
@@ -174,7 +174,7 @@ export function seedDemo(db) {
       });
     }
     db.put('mazes', mid, {
-      id: mid, name: m.name, short: m.short, order: m.order, zone: m.zone,
+      id: mid, name: m.name, short: m.short, order: m.order, zone: m.zone, callTime: m.callTime || null,
       rooms, leadPersonId: null, createdAt: iso(),
     });
     for (const [code, pname, x, y, desc] of positions) {
