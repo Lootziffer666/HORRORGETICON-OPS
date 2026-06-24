@@ -279,6 +279,16 @@ try {
   const cleared = (await api('POST', '/api/settings/lage', { token: mgmt.token, body: { clear: true } })).json;
   ok(cleared.lage === null, 'Lagestatus aufgehoben (Normalbetrieb)');
 
+  section('Notfall-/Fallback-Paket (Sicherheitsnetz)');
+  const fb = await api('GET', '/api/reports/fallback', { token: mgmt.token });
+  ok(fb.status === 200 && fb.text.includes('Notfall') && fb.text.includes('Teilnehmerliste') && fb.text.includes('Incident-Zettel'),
+    'Notfall-Paket als druckfertiges HTML erzeugt');
+  ok(fb.text.includes('Positions-Zuteilung') && fb.text.includes('THE CIRCUS'), 'Enthält Maze-/Positions-Zuteilung mit echten Daten');
+  const fbLead = await api('GET', '/api/reports/fallback', { token: lead.token });
+  ok(fbLead.status === 200, 'Lead darf das Notfall-Paket erzeugen');
+  const fbActor = await api('GET', '/api/reports/fallback', { token: actor.token });
+  ok(fbActor.status === 403, 'Actor darf das Notfall-Paket nicht erzeugen (403)');
+
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
   ok(cols.some((c) => c.name === 'people') && cols.some((c) => c.protected), `Collections (${cols.length})`);
