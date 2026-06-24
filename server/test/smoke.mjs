@@ -97,15 +97,15 @@ try {
   section('Mazes & Zuteilung');
   const mazes = (await api('GET', '/api/mazes', { token: mgmt.token })).json;
   ok(mazes?.length === 5, `5 Mazes (${mazes?.map((m) => m.name).join(', ')})`);
-  const asylum = mazes.find((m) => m.name === 'Asylum');
-  const detail = (await api('GET', `/api/mazes/${asylum.id}`, { token: mgmt.token })).json;
-  ok(detail.positions.length === 11, `Asylum hat 11 Positionen (${detail.positions.length})`);
-  const a6 = detail.positions.find((p) => p.code === 'A6');
-  ok(a6 && !a6.assignedPersonId, 'A6 „Archiv“ ist offen (Pavel fehlt)');
+  const circus = mazes.find((m) => m.name === 'THE CIRCUS');
+  const detail = (await api('GET', `/api/mazes/${circus.id}`, { token: mgmt.token })).json;
+  ok(detail.positions.length === 8, `THE CIRCUS hat 8 Positionen (${detail.positions.length})`);
+  const c6 = detail.positions.find((p) => p.code === 'C6');
+  ok(c6 && !c6.assignedPersonId, 'C6 ist offen (Pavel fehlt)');
   const issues = (await api('GET', '/api/assignments/issues', { token: mgmt.token })).json;
   ok(issues.open.length >= 3, `Offene Positionen erkannt (${issues.open.length})`);
-  const asg = (await api('POST', `/api/positions/${a6.id}/assign`, { token: lead.token, body: { personId: linked.person.id } })).json;
-  ok(asg.assignedPersonId === linked.person.id, 'Lead besetzt A6 mit verknüpfter Person');
+  const asg = (await api('POST', `/api/positions/${c6.id}/assign`, { token: lead.token, body: { personId: linked.person.id } })).json;
+  ok(asg.assignedPersonId === linked.person.id, 'Lead besetzt C6 mit verknüpfter Person');
 
   section('Live-Tracking');
   const ci = (await api('POST', '/api/live/checkin', { token: loginNew.token, body: { battery: 88 } })).json;
@@ -113,11 +113,11 @@ try {
   const hb = (await api('POST', '/api/live/heartbeat', { token: loginNew.token, body: { battery: 87 } })).json;
   ok(hb.checkedIn === true && hb.status === 'aktiv', 'Heartbeat hält Tracking frisch');
   const conf = (await api('POST', '/api/live/confirm-position', { token: loginNew.token })).json;
-  ok(conf.position === 'A6', 'Position bestätigt (A6)');
+  ok(conf.position === 'C6', 'Position bestätigt (C6)');
   const ov = (await api('GET', '/api/live/overview', { token: mgmt.token })).json;
   ok(ov.kpi.anwesend > 40 && ov.mazes.length === 5, `Lagebild: ${ov.kpi.anwesend}/${ov.kpi.crewGesamt} anwesend`);
   const row = ov.people.find((p) => p.id === linked.person.id);
-  ok(row?.status === 'aktiv' && row.position === 'A6', 'Verknüpfte Person erscheint korrekt im Tracking');
+  ok(row?.status === 'aktiv' && row.position === 'C6', 'Verknüpfte Person erscheint korrekt im Tracking');
 
   section('Pausen & Springer');
   const br = (await api('POST', '/api/breaks/request', { token: loginNew.token, body: { note: 'Kurz durchatmen' } })).json;
@@ -132,8 +132,8 @@ try {
   ok(end.status === 'beendet', 'Pause beendet');
 
   section('Meldungen & Alarm');
-  const inc = (await api('POST', '/api/incidents', { token: loginNew.token, body: { kind: 'technik', text: 'Lampe flackert im Archiv' } })).json;
-  ok(inc.status === 'offen' && inc.ort.includes('A6'), 'Meldung mit automatischer Position');
+  const inc = (await api('POST', '/api/incidents', { token: loginNew.token, body: { kind: 'technik', text: 'Lampe flackert auf Position' } })).json;
+  ok(inc.status === 'offen' && inc.ort.includes('C6'), 'Meldung mit automatischer Position');
   const ack = (await api('PATCH', `/api/incidents/${inc.id}`, { token: lead.token, body: { status: 'in_arbeit', assignee: lead.person.id } })).json;
   ok(ack.status === 'in_arbeit' && ack.reactionSec != null, 'Meldung übernommen (Reaktionszeit erfasst)');
   const done = (await api('PATCH', `/api/incidents/${inc.id}`, { token: mgmt.token, body: { status: 'erledigt' } })).json;
@@ -146,7 +146,7 @@ try {
   ok(ann.id, 'Durchsage gesendet');
   const annNotfall = (await api('POST', '/api/announcements', {
     token: lead.token,
-    body: { text: 'Show stoppen, Position halten.', level: 'notfall', scope: { type: 'maze', mazeId: asylum.id } },
+    body: { text: 'Show stoppen, Position halten.', level: 'notfall', scope: { type: 'maze', mazeId: circus.id } },
   })).json;
   ok(annNotfall.requiresAck && Array.isArray(annNotfall.audience), 'Notfall-Warnung an Maze (mit Empfängerliste)');
   await api('POST', `/api/announcements/${annNotfall.id}/read`, { token: actor.token });
@@ -202,13 +202,39 @@ try {
   section('CSV-Import/-Export');
   const csvOut = await api('GET', '/api/csv/export/personen', { token: mgmt.token, raw: true });
   ok(csvOut.status === 200 && csvOut.text.includes('Lena Krause'), 'Personen-Export (CSV)');
-  const csvText = 'Name;Rolle;Status;Ort;Maze;Position\nImport Tester;Scare Actor;aktiv;Nebelbach;Asylum;A11\nLena Krause;Scare Actor;aktiv;Nebelbach;;';
+  const csvText = 'Name;Rolle;Status;Ort;Maze;Position\nImport Tester;Scare Actor;aktiv;Nebelbach;THE CIRCUS;C6\nLena Krause;Scare Actor;aktiv;Nebelbach;;';
   const dry = (await api('POST', '/api/csv/import/personen', { token: mgmt.token, body: { text: csvText, dryRun: true } })).json;
   ok(dry.dryRun && dry.neu.length === 1 && dry.aktualisiert.length === 1, `Import-Vorschau (1 neu, 1 aktualisiert)`);
   const apply = (await api('POST', '/api/csv/import/personen', { token: mgmt.token, body: { text: csvText, dryRun: false } })).json;
   ok(apply.angewendet === 2, 'Import angewendet');
   const after = (await api('GET', '/api/people?q=Import Tester', { token: mgmt.token })).json;
-  ok(after.length === 1, 'Importierte Person ist da (und auf A11 zugeteilt)');
+  ok(after.length === 1, 'Importierte Person ist da (und auf C6 zugeteilt)');
+
+  section('Universal-Import (Excel · HTML · TSV · E-Mail · Freitext)');
+  // Excel-Copy/Paste (Tab-getrennt)
+  const tsv = 'Name\tRolle\tOrt\nUni Tsv\tScare Actor\tAachen\nUni Tsv Zwei\tSpringer\tDüren';
+  const tsvDry = (await api('POST', '/api/import/personen', { token: mgmt.token, body: { text: tsv, dryRun: true } })).json;
+  ok(tsvDry.dryRun && tsvDry.format === 'delimited' && tsvDry.neu.length === 2, `TSV/Excel-Paste erkannt (${tsvDry.format}, ${tsvDry.neu.length} neu)`);
+  // HTML-Tabelle (aus Webseite/E-Mail kopiert)
+  const html = '<table><tr><th>Name</th><th>Kontakt</th></tr><tr><td>Uni Html</td><td>html@example.com</td></tr></table>';
+  const htmlDry = (await api('POST', '/api/import/personen', { token: mgmt.token, body: { text: html, dryRun: true } })).json;
+  ok(htmlDry.format === 'html' && htmlDry.neu.length === 1, `HTML-Tabelle erkannt (${htmlDry.format})`);
+  // Freitext-Namensliste (keine Spaltenüberschriften → Freitext-Fallback)
+  const freitext = 'Uni Freitext\nNoch Einer <einer@example.com>\nDrei Drei 0151 1234567';
+  const ftDry = (await api('POST', '/api/import/personen', { token: mgmt.token, body: { text: freitext, dryRun: true } })).json;
+  ok(ftDry.format === 'freitext' && ftDry.neu.length === 3, `Freitext erkannt & Namen extrahiert (${ftDry.neu.length})`);
+  // Echte Excel-Datei (.xlsx) als base64 — vollständig ohne Fremdbibliothek geparst
+  const xlsxB64 = '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';
+  const xlsxApply = (await api('POST', '/api/import/personen', { token: mgmt.token, body: { base64: xlsxB64, filename: 'crew.xlsx', dryRun: false } })).json;
+  ok(xlsxApply.format === 'xlsx' && xlsxApply.angewendet >= 1, `Echte Excel-Datei (.xlsx) geparst & angewendet (${xlsxApply.angewendet})`);
+  const xena = (await api('GET', '/api/people?q=Xena Volt', { token: mgmt.token })).json;
+  ok(xena.length === 1 && (xena[0].roles || []).includes('actor'), 'Person aus Excel-Datei angelegt (Xena Volt)');
+  // Altes .xls-Binärformat → klar abgelehnt
+  const xls = await api('POST', '/api/import/personen', { token: mgmt.token, body: { base64: 'AAAA', filename: 'alt.xls', dryRun: true } });
+  ok(xls.status === 400, 'Altes .xls-Format wird mit Hinweis abgelehnt (400)');
+  // Actor darf nicht importieren
+  const impForbidden = await api('POST', '/api/import/personen', { token: actor.token, body: { text: 'Name\nNiemand', dryRun: true } });
+  ok(impForbidden.status === 403, 'Actor darf nicht importieren (403)');
 
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
@@ -288,7 +314,7 @@ try {
   ok(seedTasks.length >= 6 && seedTasks.some((t) => t.overdue), `Demo-Aufgaben (${seedTasks.length} aktiv, überfällige markiert)`);
   const newTask = (await api('POST', '/api/tasks', {
     token: mgmt.token,
-    body: { title: 'Testaufgabe: Kabel sichern', mazeId: asylum.id, prio: 'hoch', critical: true, deadline: '23:30' },
+    body: { title: 'Testaufgabe: Kabel sichern', mazeId: circus.id, prio: 'hoch', critical: true, deadline: '23:30' },
   })).json;
   ok(newTask.id && newTask.status === 'offen', 'Aufgabe erstellt (kritisch, mit Frist)');
   const disp = (await api('POST', `/api/tasks/${newTask.id}/assign`, { token: mgmt.token, body: { assigneeId: actor.person.id } })).json;
@@ -310,10 +336,10 @@ try {
 
   section('Checklisten & Rundgänge');
   const ready0 = (await api('GET', '/api/checklists/readiness', { token: mgmt.token })).json;
-  const asylumReady = ready0.find((r) => r.maze === 'Asylum');
-  ok(asylumReady && !asylumReady.bereit && asylumReady.pflichtOffen === 1, 'Asylum nicht bereit (1 Pflichtpunkt offen — Demo)');
+  const circusReady = ready0.find((r) => r.maze === 'THE CIRCUS');
+  ok(circusReady && !circusReady.bereit && circusReady.pflichtOffen === 1, 'THE CIRCUS nicht bereit (1 Pflichtpunkt offen — Demo)');
   ok(ready0.filter((r) => r.bereit).length === 4, 'Übrige 4 Mazes bereit');
-  const cls = (await api('GET', `/api/checklists?maze=${asylum.id}`, { token: lead.token })).json;
+  const cls = (await api('GET', `/api/checklists?maze=${circus.id}`, { token: lead.token })).json;
   const sicherheit = cls.find((c) => c.type === 'sicherheit');
   const openItem = sicherheit.items.find((i) => i.mandatory && !i.done);
   ok(!!openItem, `Offener Pflichtpunkt gefunden („${openItem?.text.slice(0, 30)}…“)`);
@@ -325,7 +351,7 @@ try {
   ok(ready1.every((r) => r.bereit), 'Readiness: alle Mazes bereit ✓');
   const tpl = (await api('GET', '/api/checklists/templates', { token: lead.token })).json;
   ok(tpl.length === 6 && tpl.every((t) => t.items.length >= 5), 'Eingebaute Vorlagen (6 Typen)');
-  const newCl = (await api('POST', '/api/checklists', { token: mgmt.token, body: { type: 'preshow', mazeId: asylum.id } })).json;
+  const newCl = (await api('POST', '/api/checklists', { token: mgmt.token, body: { type: 'preshow', mazeId: circus.id } })).json;
   ok(newCl.items.length >= 5 && newCl.mandatoryOpen > 0, 'Rundgang aus Vorlage angelegt');
   const actorCl = await api('POST', `/api/checklists/${newCl.id}/toggle`, { token: actor.token, body: { itemId: 'i1' } });
   ok(actorCl.status === 403, 'Actors haken keine Rundgänge ab (Lead/Mgmt)');
@@ -340,9 +366,9 @@ try {
   ok(decFeed.length >= 2 && decFeed[0].text.includes('Welle 42'), `Entscheidungslog filterbar (${decFeed.length} Einträge)`);
   const decForb = await api('POST', '/api/feed/decision', { token: actor.token, body: { text: 'x' } });
   ok(decForb.status === 403, 'Entscheidungslog nur Lead/Management');
-  const handover = (await api('GET', `/api/reports/handover?maze=${asylum.id}`, { token: lead.token })).json;
-  ok(handover.maze === 'Asylum' && Array.isArray(handover.offeneAufgaben) && handover.checklisten.length >= 3,
-    `Übergabeprotokoll Asylum (${handover.offeneAufgaben.length} Aufgaben, ${handover.offeneVorfaelle.length} Vorfälle)`);
+  const handover = (await api('GET', `/api/reports/handover?maze=${circus.id}`, { token: lead.token })).json;
+  ok(handover.maze === 'THE CIRCUS' && Array.isArray(handover.offeneAufgaben) && handover.checklisten.length >= 3,
+    `Übergabeprotokoll THE CIRCUS (${handover.offeneAufgaben.length} Aufgaben, ${handover.offeneVorfaelle.length} Vorfälle)`);
   ok(handover.entscheidungen.length >= 1, 'Entscheidungen im Übergabeprotokoll');
 
   section('Berichte, Zeitplan, Einstellungen, Feed');
@@ -391,13 +417,13 @@ try {
   // Mazes mit Intensitaet
   const kdMazes = (await api('GET', '/api/kidsday/mazes', { token: mgmt.token })).json;
   ok(kdMazes.length === 5 && kdMazes.every((m) => m.kidsMode === true), 'GET /api/kidsday/mazes: 5 Mazes im Kids-Mode');
-  const kdAsylum = kdMazes.find((m) => m.name === 'Asylum');
-  ok(kdAsylum && kdAsylum.intensity === 'leicht', 'Asylum-Intensitaet ist leicht');
+  const kdCircus = kdMazes.find((m) => m.name === 'THE CIRCUS');
+  ok(kdCircus && kdCircus.intensity === 'leicht', 'THE CIRCUS-Intensitaet ist leicht');
 
   // Maze-Intensitaet patchen
-  const kdMazePatch = (await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: mgmt.token, body: { intensity: 'mittel' } })).json;
+  const kdMazePatch = (await api('PATCH', `/api/kidsday/mazes/${kdCircus.mazeId}`, { token: mgmt.token, body: { intensity: 'mittel' } })).json;
   ok(kdMazePatch.intensity === 'mittel', 'PATCH Maze-Intensitaet auf mittel');
-  const kdForbMaze = await api('PATCH', `/api/kidsday/mazes/${kdAsylum.mazeId}`, { token: actor.token, body: { intensity: 'aus' } });
+  const kdForbMaze = await api('PATCH', `/api/kidsday/mazes/${kdCircus.mazeId}`, { token: actor.token, body: { intensity: 'aus' } });
   ok(kdForbMaze.status === 403, 'Actor darf Maze-Intensitaet nicht aendern (403)');
 
   // Invalid-input error paths

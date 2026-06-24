@@ -86,8 +86,8 @@ function registerForm(onLogin) {
 
 function demoHint() {
   const open = h('div', { class: 'col', style: { gap: '6px', display: 'none' } },
-    ...[['DR-0001', '4711', 'Management · Leitstand'], ['MT-0301', '1234', 'Maze Lead · Asylum'],
-      ['LK-0427', '1234', 'Scare Actor · A3'], ['SB-0901', '1234', 'Catering · Station Nord']]
+    ...[['DR-0001', '4711', 'Management · Leitstand'], ['MT-0301', '1234', 'Maze Lead · THE CIRCUS'],
+      ['LK-0427', '1234', 'Scare Actor · C3'], ['SB-0901', '1234', 'Catering · Station Nord']]
       .map(([c, p, r]) => h('div', { class: 'row', style: { fontSize: '12px', gap: '8px' } },
         h('b', { class: 'mono' }, c), h('span', { class: 'mono', style: { color: 'var(--fg-muted)' } }, `PIN ${p}`),
         h('span', { class: 'sub' }, r))));

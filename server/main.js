@@ -51,7 +51,7 @@ const authLimiter = new RateLimiter({ windowMs: 5 * 60_000, max: 10 });
 const apiLimiter = new RateLimiter({ windowMs: 60_000, max: 500 });
 
 // Endpunkte mit grossem Body (z.B. CSV-Import): 8 MB erlaubt.
-const LARGE_BODY_ROUTES = new Set(['/api/csv/import/personen']);
+const LARGE_BODY_ROUTES = new Set(['/api/csv/import/personen', '/api/import/personen']);
 // Standard-Limit fuer alle anderen API-Bodies: 256 KB.
 const DEFAULT_BODY_LIMIT = 256 * 1024;
 const LARGE_BODY_LIMIT = 8 * 1024 * 1024;
