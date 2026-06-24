@@ -265,6 +265,20 @@ try {
   ok(typeof net.joinUrl === 'string' && net.joinUrl.startsWith('http'), `Beitritts-URL vorhanden (${net.joinUrl})`);
   ok(typeof net.qrSvg === 'string' && net.qrSvg.includes('<svg') && net.qrSvg.includes('</svg>'), 'Beitritts-QR als SVG erzeugt');
 
+  section('Live-Lagestatus (Banner für alle)');
+  const lageSet = (await api('POST', '/api/settings/lage', { token: mgmt.token, body: { text: 'Wetter-Stopp — bleibt in Position.', level: 'stop', nextInfoAt: '18:30' } })).json;
+  ok(lageSet.lage && lageSet.lage.text.includes('Wetter') && lageSet.lage.nextInfoAt === '18:30', 'Lagestatus gesetzt (mit nächste-Info-Zeit)');
+  const settActor = (await api('GET', '/api/settings', { token: actor.token })).json;
+  ok(settActor.lage && settActor.lage.level === 'stop', 'Lagestatus für Crew (Actor) in /settings sichtbar');
+  const lageBadTime = await api('POST', '/api/settings/lage', { token: mgmt.token, body: { text: 'x', nextInfoAt: '25:99' } });
+  ok(lageBadTime.status === 400, 'Ungültige „nächste Info"-Zeit abgelehnt (400)');
+  const leadLage = await api('POST', '/api/settings/lage', { token: lead.token, body: { text: 'Lead: gleich geht es weiter.' } });
+  ok(leadLage.status === 200, 'Lead darf Lagestatus setzen');
+  const actorLage = await api('POST', '/api/settings/lage', { token: actor.token, body: { text: 'darf nicht' } });
+  ok(actorLage.status === 403, 'Actor darf keinen Lagestatus setzen (403)');
+  const cleared = (await api('POST', '/api/settings/lage', { token: mgmt.token, body: { clear: true } })).json;
+  ok(cleared.lage === null, 'Lagestatus aufgehoben (Normalbetrieb)');
+
   section('DB-Pflege & Audit');
   const cols = (await api('GET', '/api/db/collections', { token: mgmt.token })).json;
   ok(cols.some((c) => c.name === 'people') && cols.some((c) => c.protected), `Collections (${cols.length})`);
