@@ -53,5 +53,10 @@ export async function reportsView({ onCleanup, refresh }) {
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
       h('span', { class: 'overline' }, 'Event-Timeline exportieren:'),
       h('button', { class: 'btn sm quiet', onclick: () => { const t = getToken(); window.open(`/api/reports/timeline/export?token=${encodeURIComponent(t)}`); } }, ic('print', 13), 'HTML/Drucken'),
-      h('button', { class: 'btn sm quiet', onclick: () => download('/api/reports/timeline/csv') }, ic('download', 13), 'CSV')));
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/reports/timeline/csv') }, ic('download', 13), 'CSV')),
+
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap', alignItems: 'center' } },
+      h('span', { class: 'overline' }, 'Sicherheitsnetz:'),
+      h('button', { class: 'btn sm orange', onclick: () => { const t = getToken(); window.open(`/api/reports/fallback?token=${encodeURIComponent(t)}`); } }, ic('print', 13), 'Notfall-Paket (drucken)'),
+      h('span', { class: 'sub' }, 'Teilnehmer, Zuteilung, Kontakte & Incident-Zettel — vor dem Event ausdrucken.')));
 }

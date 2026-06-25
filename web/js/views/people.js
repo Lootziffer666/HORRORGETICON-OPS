@@ -30,7 +30,7 @@ export async function peopleView({ params, onCleanup, refresh }) {
       }, l)),
       h('div', { style: { flex: 1 } }),
       h('button', { class: 'btn sm quiet', onclick: () => download('/api/csv/export/personen') }, ic('download', 14), 'CSV-Export'),
-      h('button', { class: 'btn sm quiet', onclick: () => csvImportSheet(refresh) }, ic('upload', 14), 'CSV-Import'),
+      h('button', { class: 'btn sm quiet', onclick: () => universalImportSheet(refresh) }, ic('upload', 14), 'Import'),
       h('button', { class: 'btn sm orange', onclick: () => personSheet(null, refresh) }, ic('plus', 14), 'Person')),
 
     (linkOv.selfProfiles.length > 0 || linkOv.openCodes.length > 0) && linkPanel(linkOv, people, refresh),
@@ -202,34 +202,82 @@ function linkCodeSheet(code, name) {
   });
 }
 
-// ───────── CSV-Import mit Vorschau ─────────
-function csvImportSheet(refresh) {
-  const ta = h('textarea', { rows: 8, placeholder: 'CSV hier einfügen — oder Datei wählen.\nErwartete Spalten (flexibel): Name; Rolle; Status; Kontakt; Telefon; Ort; Maze; Position; Notizen' });
-  const file = h('input', { type: 'file', accept: '.csv,text/csv', style: { display: 'none' } });
-  file.addEventListener('change', async () => {
-    const fl = file.files?.[0];
-    if (fl) ta.value = await fl.text();
+// ───────── Universal-Import mit Vorschau ─────────
+// Frisst praktisch alles: Excel (.xlsx), CSV/TSV, aus Tabellen/Webseiten kopierte Daten,
+// HTML, E-Mail (.eml) und reinen Freitext (Namen/E-Mails/Telefon). Format wird erkannt.
+const IMPORT_ACCEPT = '.csv,.tsv,.txt,.xlsx,.htm,.html,.eml,text/*,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+async function fileToBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bin = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+  return btoa(bin);
+}
+
+function universalImportSheet(refresh) {
+  // Zustand: entweder Datei (base64) ODER Text aus dem Feld
+  let fileData = null; // { base64, filename }
+  const ta = h('textarea', {
+    rows: 7,
+    placeholder: 'Hier alles einfügen: Excel-Zellen (Strg+V), CSV, eine Tabelle aus einer Webseite/E-Mail oder einfach eine Namensliste.\n\nFlexible Spalten: Name · Rolle · Status · Kontakt · Telefon · Ort · Maze · Position · Notizen',
   });
+  const fileLabel = h('span', { class: 'sub' }, 'Keine Datei gewählt');
+  const file = h('input', { type: 'file', accept: IMPORT_ACCEPT, style: { display: 'none' } });
   const preview = h('div');
+
+  const setFile = async (fl) => {
+    if (!fl) return;
+    fileData = { base64: await fileToBase64(fl), filename: fl.name };
+    fileLabel.textContent = `Datei: ${fl.name}`;
+    ta.value = '';
+    ta.setAttribute('disabled', 'true');
+    preview.replaceChildren();
+  };
+  const clearFile = () => {
+    fileData = null;
+    fileLabel.textContent = 'Keine Datei gewählt';
+    ta.removeAttribute('disabled');
+  };
+  file.addEventListener('change', () => setFile(file.files?.[0]));
+  ta.addEventListener('input', () => { if (fileData) clearFile(); });
+
+  const drop = h('div', { class: 'dropzone' },
+    ic('upload', 18, { color: 'var(--fg-muted)' }),
+    h('span', {}, 'Datei hierher ziehen — Excel · CSV · TSV · HTML · E-Mail · Textliste'),
+    fileLabel,
+    h('div', { class: 'row', style: { gap: '8px' } },
+      h('button', { class: 'btn sm quiet', onclick: () => file.click() }, ic('doc', 14), 'Datei wählen'),
+      h('button', { class: 'btn sm quiet', onclick: () => download('/api/import/template/personen') }, ic('download', 14), 'Vorlage'),
+      file));
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault(); drop.classList.remove('over');
+    setFile(e.dataTransfer?.files?.[0]);
+  });
+
+  const payload = (dryRun) => fileData ? { ...fileData, dryRun } : { text: ta.value, dryRun };
+
   sheet({
-    title: 'CSV-Import — Personen', icon: 'upload', tone: 'info', center: true,
-    sub: 'Erst Vorschau (ändert nichts), dann anwenden. Erkennt ; und , automatisch.',
+    title: 'Import — Personen', icon: 'upload', tone: 'info', center: true,
+    sub: 'Von überall: Excel, CSV, kopierte Tabellen, E-Mail oder Freitext. Erst Vorschau (ändert nichts), dann anwenden.',
     content: (close) => h('div', { class: 'col', style: { gap: '12px' } },
-      h('div', { class: 'row', style: { gap: '8px' } },
-        h('button', { class: 'btn sm quiet', onclick: () => file.click() }, ic('doc', 14), 'Datei wählen'), file),
+      drop,
+      h('span', { class: 'overline' }, 'oder einfügen'),
       h('div', { class: 'inp area' }, ta),
       preview,
       h('div', { class: 'row', style: { gap: '8px', justifyContent: 'flex-end' } },
         h('button', { class: 'btn quiet', onclick: close }, 'Abbrechen'),
         h('button', {
           class: 'btn', onclick: () => act(async () => {
-            const r = await post('/api/csv/import/personen', { text: ta.value, dryRun: true });
+            const r = await post('/api/import/personen', payload(true));
             preview.replaceChildren(previewBox(r));
           }),
         }, ic('eye', 15), 'Vorschau'),
         h('button', {
           class: 'btn orange', onclick: () => act(async () => {
-            const r = await post('/api/csv/import/personen', { text: ta.value, dryRun: false });
+            const r = await post('/api/import/personen', payload(false));
             toast(`Import: ${r.neu.length} neu, ${r.aktualisiert.length} aktualisiert`, 'ok');
             close(); refresh();
           }),
@@ -238,12 +286,16 @@ function csvImportSheet(refresh) {
 }
 
 function previewBox(r) {
-  return h('div', { class: 'card pad col', style: { gap: '6px', background: 'var(--bg-muted)', boxShadow: 'none', maxHeight: '200px', overflow: 'auto' } },
-    h('span', { style: { fontSize: '13px', fontWeight: 700 } },
-      `Vorschau: ${r.neu.length} neu · ${r.aktualisiert.length} aktualisiert · ${r.fehler.length} Fehler`),
+  const fmt = { xlsx: 'Excel-Datei', delimited: 'Tabelle', html: 'HTML-Tabelle', freitext: 'Freitext', csv: 'CSV' }[r.format] || r.format;
+  return h('div', { class: 'card pad col', style: { gap: '6px', background: 'var(--bg-muted)', boxShadow: 'none', maxHeight: '220px', overflow: 'auto' } },
+    h('div', { class: 'row', style: { gap: '8px', alignItems: 'center' } },
+      badge('info', `Erkannt: ${fmt}`),
+      h('span', { style: { fontSize: '13px', fontWeight: 700 } },
+        `${r.neu.length} neu · ${r.aktualisiert.length} aktualisiert · ${r.fehler.length} Fehler`)),
+    ...(r.notes || []).map((n) => h('span', { class: 'sub' }, n)),
     ...r.neu.slice(0, 8).map((e) => h('span', { class: 'sub' }, `+ ${e.name} (${e.code}) ${e.maze ? `→ ${e.maze} ${e.position}` : ''}`)),
     ...r.aktualisiert.slice(0, 8).map((e) => h('span', { class: 'sub' }, `↻ ${e.name} (${e.code})`)),
-    ...r.fehler.map((e) => h('span', { class: 'sub danger-text' }, `✘ Zeile ${e.zeile}: ${e.grund}`)));
+    ...r.fehler.slice(0, 6).map((e) => h('span', { class: 'sub danger-text' }, `✘ Zeile ${e.zeile}: ${e.grund}`)));
 }
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }

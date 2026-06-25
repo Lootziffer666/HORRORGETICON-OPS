@@ -196,7 +196,7 @@ export async function announceSheet({ mazeId = null, level = 'wichtig' } = {}) {
 // ───────── Meldung erfassen (Actor-Sheet & Leitstand) ─────────
 export function incidentSheet({ onDone = null } = {}) {
   let kind = 'technik', prio = 'mittel';
-  const text = h('textarea', { placeholder: 'Stroboskop in A3 ausgefallen, Abschnitt ist zu dunkel …', rows: 3 });
+  const text = h('textarea', { placeholder: 'Stroboskop in C3 ausgefallen, Abschnitt ist zu dunkel …', rows: 3 });
   sheet({
     title: 'Warnung melden', icon: 'alert', tone: 'err',
     sub: 'Geht sofort an Maze Lead + Leitstand',

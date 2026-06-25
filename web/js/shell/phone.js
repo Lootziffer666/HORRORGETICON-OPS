@@ -119,6 +119,11 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
   const s = store.settings || { shiftStart: '18:00', shiftEnd: '01:00' };
   const phase = s.phase || 'live';
   const prog = shiftProgress(s.shiftStart, s.shiftEnd);
+  // Persönliche Rufzeit: die der eigenen Maze, sonst der allgemeine Schichtstart.
+  const myCall = meRow?.callTime || s.shiftStart;
+  const callBadge = h('div', { class: 'row', style: { gap: '8px', alignItems: 'center', flexWrap: 'wrap' } },
+    badge('info', `🕒 Deine Rufzeit: ${myCall}`, { dot: true }),
+    h('span', { class: 'sub' }, meRow?.maze ? `${meRow.maze}${meRow.position ? ' · ' + meRow.position : ''}` : 'noch keine Position'));
 
   // Detail-Status-Chips (horrops_fullstack.md: ActorStatusPanel)
   const statusChips = checkedIn && phase !== 'abschluss' && h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
@@ -139,7 +144,7 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
 
   const headBlock = h('div', { class: 'row' },
     h('div', { class: 'col grow', style: { gap: '2px' } },
-      h('span', { class: 'overline' }, phase === 'abschluss' ? 'Das war die Horrornacht' : phase === 'live' ? 'Deine Schicht heute' : `${PHASE_META[phase].label} · Schichtstart ${s.shiftStart}`),
+      h('span', { class: 'overline' }, phase === 'abschluss' ? 'Das war die Horrornacht' : phase === 'live' ? 'Deine Schicht heute' : `${PHASE_META[phase].label} · Deine Rufzeit ${myCall}`),
       h('span', { style: { fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '20px' } },
         phase === 'abschluss' ? 'Danke für heute Nacht! 🎃'
           : meRow?.maze ? `${meRow.maze} · ${meRow.position}${meRow.positionName ? ` „${meRow.positionName}“` : ''}` : 'Noch keine Position zugeteilt')),
@@ -157,6 +162,7 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
     // Vorbereitung/Aufbau: kein Schichtfortschritt, dafür Aufbau-Kontext
     shiftCard = h('div', { class: 'card pad col', style: { gap: '12px', padding: '16px' } },
       headBlock,
+      !checkedIn && callBadge,
       h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
         badge(PHASE_META[phase].tone, PHASE_META[phase].label, { dot: true }),
         meRow?.late && badge('warn', `⏰ Verspätung gemeldet: +${meRow.late.etaMin} min`),
@@ -180,6 +186,7 @@ async function actorHome({ onCleanup, refresh }, drawHead) {
         meRow?.selfCreated && badge('warn', 'Profil unverknüpft!', { dot: true })),
       statusChips,
       checkedIn ? checkoutBtn : h('div', { class: 'col', style: { gap: '8px' } },
+        callBadge,
         checkinBtn,
         h('button', { class: 'btn quiet', onclick: () => lateSheet(refresh) }, ic('clock', 16), 'Ich verspäte mich')));
   }

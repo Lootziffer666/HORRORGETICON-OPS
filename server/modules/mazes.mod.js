@@ -36,6 +36,7 @@ export default {
         short: (ctx.body.short || ctx.body.name[0]).toUpperCase(),
         order: ctx.body.order ?? db.count('mazes') + 1,
         zone: ctx.body.zone || null, leadPersonId: ctx.body.leadPersonId || null,
+        callTime: parseHHMM(ctx.body.callTime),
         rooms: ctx.body.rooms || [], createdAt: iso(),
       };
       db.put('mazes', m.id, m);
@@ -49,6 +50,7 @@ export default {
       for (const k of ['name', 'short', 'order', 'zone', 'leadPersonId', 'rooms']) {
         if (ctx.body[k] !== undefined) upd[k] = ctx.body[k];
       }
+      if (ctx.body.callTime !== undefined) upd.callTime = parseHHMM(ctx.body.callTime);
       const next = db.put('mazes', m.id, { ...m, ...upd });
       bus.publish('maze.changed', { mazeId: m.id });
       return next;
@@ -140,3 +142,11 @@ export default {
 };
 
 function strip(p) { if (!p) return null; const { pin, ...rest } = p; return rest; }
+
+// Rufzeit-Parser: leer → null, sonst validierte Uhrzeit "HH:MM".
+function parseHHMM(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const m = String(v).match(/^(\d{1,2}):(\d{2})$/);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) bad('Rufzeit muss eine Uhrzeit "HH:MM" sein');
+  return `${String(m[1]).padStart(2, '0')}:${m[2]}`;
+}

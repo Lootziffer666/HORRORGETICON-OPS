@@ -1,8 +1,10 @@
 // Horrorgeticon Ops — Event-Bus + SSE-Hub (Live-Feed, Tracking, Chat, Alarme)
 import { now, id } from './util.js';
 
-/** Maximale Anzahl gleichzeitiger SSE-Verbindungen insgesamt (Speicherschutz). */
-const MAX_CLIENTS = 200;
+/** Maximale Anzahl gleichzeitiger SSE-Verbindungen insgesamt (Speicherschutz).
+ *  Dimensioniert für ~150 Mitarbeitende im Event-Betrieb inkl. Zweitgeräten,
+ *  Tabs und Reconnect-Wellen — mit Reserve. Pro Verbindung nur wenige KB. */
+const MAX_CLIENTS = 500;
 /** Maximale Anzahl gleichzeitiger SSE-Verbindungen pro Person. */
 const MAX_PER_PERSON = 3;
 /** Intervall fuer den Stale-Connection-Reaper (ms). */

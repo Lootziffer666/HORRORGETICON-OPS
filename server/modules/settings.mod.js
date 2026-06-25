@@ -70,6 +70,37 @@ export default {
       return pub;
     }, { roles: ['management'] });
 
+    // Live-Lagestatus: ein dauerhaft sichtbares Banner auf JEDEM Gerät, vom
+    // Leitstand gesteuert. Beantwortet im Ausnahmefall (Wetter, Verzögerung)
+    // durchgehend "was ist los / wann geht's weiter" — statt einmaliger Durchsage.
+    post('/api/settings/lage', async (ctx) => {
+      const cur = db.get('settings', 'main') || { id: 'main' };
+      // Aufheben
+      if (ctx.body.clear === true || ctx.body.active === false) {
+        const next = db.put('settings', 'main', { ...cur, lage: null });
+        feed(`🟢 Lagestatus aufgehoben — Normalbetrieb (${ctx.person.name}).`, { kind: 'durchsage', level: 'info', by: ctx.person.name });
+        bus.publish('settings.changed', { keys: ['lage'] });
+        const { secret, ...pub } = next;
+        return pub;
+      }
+      const text = need(ctx.body, 'text').slice(0, 200);
+      const level = ['info', 'warnung', 'stop'].includes(ctx.body.level) ? ctx.body.level : 'warnung';
+      // nächste Info als "HH:MM" (optional)
+      let nextInfoAt = null;
+      if (ctx.body.nextInfoAt) {
+        const m = String(ctx.body.nextInfoAt).match(/^(\d{1,2}):(\d{2})$/);
+        if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) bad('nextInfoAt muss eine Uhrzeit "HH:MM" sein');
+        nextInfoAt = `${String(m[1]).padStart(2, '0')}:${m[2]}`;
+      }
+      const lage = { text, level, nextInfoAt, by: ctx.person.name, at: iso(), time: hhmm() };
+      const next = db.put('settings', 'main', { ...cur, lage });
+      feed(`📣 Lagestatus: ${text}${nextInfoAt ? ` (nächste Info ${nextInfoAt})` : ''} — ${ctx.person.name}`,
+        { kind: 'durchsage', level: level === 'stop' ? 'err' : 'warn', by: ctx.person.name });
+      bus.publish('settings.changed', { keys: ['lage'] });
+      const { secret, ...pub } = next;
+      return pub;
+    }, { roles: ['management', 'lead'] });
+
     post('/api/settings/orte', async (ctx) => {
       const name = need(ctx.body, 'name');
       const lat = Number(ctx.body.lat), lon = Number(ctx.body.lon);

@@ -1,9 +1,9 @@
 // Horrorgeticon Ops — CSV: robust gegen Excel-Eigenheiten (; oder , · BOM · Anführungszeichen)
-export function parseCsv(text) {
+export function parseCsv(text, forcedSep) {
   text = String(text || '').replace(/^﻿/, '');
-  if (!text.trim()) return { header: [], rows: [], sep: ';' };
+  if (!text.trim()) return { header: [], rows: [], sep: forcedSep || ';' };
   const firstLine = text.slice(0, text.indexOf('\n') === -1 ? text.length : text.indexOf('\n'));
-  const sep = (firstLine.match(/;/g)?.length || 0) >= (firstLine.match(/,/g)?.length || 0) ? ';' : ',';
+  const sep = forcedSep || ((firstLine.match(/;/g)?.length || 0) >= (firstLine.match(/,/g)?.length || 0) ? ';' : ',');
 
   const rows = [];
   let cur = [], field = '', inQ = false;

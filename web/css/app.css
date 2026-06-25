@@ -81,6 +81,20 @@ button { font: inherit; border: none; background: none; padding: 0; color: inher
 .offline-banner.err { background: var(--color-error); }
 .offline-banner.ok { background: var(--color-success); }
 
+/* ───────── Live-Lagestatus-Banner (vom Leitstand gesteuert) ───────── */
+.lage-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 85;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 0.2px;
+  padding: 9px 16px; color: #fff; box-shadow: var(--shadow-2);
+}
+.lage-banner .next { font-weight: 700; opacity: 0.92; font-size: 13px; }
+.lage-banner.warn { background: var(--color-warning); color: #3a2e05; }
+.lage-banner.info { background: var(--color-info); }
+.lage-banner.stop { background: var(--color-error); animation: lage-pulse 2s ease-in-out infinite; }
+@keyframes lage-pulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
+body.has-lage #app { padding-top: 40px; }
+
 /* ───────── Toasts ───────── */
 .toasts { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
 .toast {

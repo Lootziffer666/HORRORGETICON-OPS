@@ -1,0 +1,53 @@
+HORRORGETICON OPS — LEITSTAND (Windows)
+========================================
+
+Kein Installieren noetig. Alles laeuft aus diesem Ordner.
+
+
+SO STARTEST DU
+--------------
+1. Diesen Ordner komplett auf den Leitstand-Rechner kopieren
+   (z. B. auf den Desktop). Nicht einzelne Dateien herausloesen.
+
+2. Doppelklick auf:  "Leitstand starten.cmd"
+   - Ein schwarzes Fenster oeffnet sich  -> das ist der Server.
+   - Der Browser oeffnet sich automatisch mit dem Leitstand.
+   - Das schwarze Fenster waehrend des Events OFFEN lassen.
+
+3. Anmelden. (Demo-Zugaenge stehen im Anmeldebildschirm unter
+   "Demo-Zugaenge anzeigen".)
+
+
+CREW VERBINDET SICH (Handys/Tablets)
+------------------------------------
+1. Alle Geraete ins SELBE WLAN bringen wie der Leitstand-Rechner.
+2. Im Leitstand-Anmeldebildschirm "Crew per QR verbinden" aufklappen.
+3. Auf dem Beamer/Bildschirm zeigen. Crew scannt den QR ODER tippt
+   die angezeigte Adresse (z. B. http://192.168.x.x:8787) ein.
+
+
+NETZ-IN-A-BOX  (ohne Internet, ohne Veranstalter-WLAN)
+------------------------------------------------------
+Das System braucht KEIN Internet. Du bringst dein eigenes Netz mit:
+- Eigenen WLAN-Router / Access Point mitbringen, Leitstand-Rechner
+  und alle Geraete dort verbinden. Fertig.
+- Alternativ den Windows-Hotspot des Notebooks nutzen
+  (Einstellungen -> Netzwerk -> Mobiler Hotspot) und alle Geraete
+  diesem Hotspot beitreten lassen.
+
+TIPP fuer Ausfallsicherheit: Router/AP an eine kleine Powerbank/USV
+haengen -> laeuft auch bei kurzem Stromausfall weiter.
+
+
+DEMO ZEIGEN
+-----------
+Doppelklick auf "Demo starten.cmd" - startet ein fertiges
+Demo-Szenario mit eigenen Daten (vermischt sich nicht mit echten
+Event-Daten).
+
+
+HILFE
+-----
+Laeuft etwas nicht: schwarzes Fenster schliessen und neu starten.
+Daten liegen im Unterordner "data" (echter Betrieb) bzw.
+"demo-data" (Demo) - einfach zu sichern (kopieren) oder zuruecksetzen.

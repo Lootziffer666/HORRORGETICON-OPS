@@ -13,6 +13,8 @@ import { Kernel } from './kernel/kernel.js';
 import { Router, RateLimiter, readBody, jsonDepth, sendJson, sendText, serveStatic } from './kernel/http.js';
 import { ApiError } from './kernel/util.js';
 import { seedDemo, ensureBaseline } from './seed/seed.js';
+import { lanIPv4s, joinUrls, openBrowser } from './kernel/net.js';
+import { qrSvg } from './kernel/qr.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -51,7 +53,7 @@ const authLimiter = new RateLimiter({ windowMs: 5 * 60_000, max: 10 });
 const apiLimiter = new RateLimiter({ windowMs: 60_000, max: 500 });
 
 // Endpunkte mit grossem Body (z.B. CSV-Import): 8 MB erlaubt.
-const LARGE_BODY_ROUTES = new Set(['/api/csv/import/personen']);
+const LARGE_BODY_ROUTES = new Set(['/api/csv/import/personen', '/api/import/personen', '/api/import/zuteilung']);
 // Standard-Limit fuer alle anderen API-Bodies: 256 KB.
 const DEFAULT_BODY_LIMIT = 256 * 1024;
 const LARGE_BODY_LIMIT = 8 * 1024 * 1024;
@@ -64,6 +66,15 @@ router.add('GET', '/api/stream', async (ctx) => {
   const cid = bus.attach(ctx.req, ctx.res, ctx);
   if (cid === null) return Symbol.for('handled'); // 503 wurde direkt geschrieben
   return Symbol.for('handled'); // Verbindung bleibt offen
+}, { module: '_kernel' });
+
+// Beitritts-Infos (offen, ohne Login): LAN-Adresse(n) + Beitritts-QR für die Crew.
+router.add('GET', '/api/net/info', async () => {
+  const urls = joinUrls(PORT);
+  const joinUrl = urls[0];
+  let qr = null;
+  try { qr = qrSvg(joinUrl, { scale: 6 }); } catch { /* QR optional — URL steht trotzdem */ }
+  return { port: PORT, ips: lanIPv4s(), urls, joinUrl, qrSvg: qr };
 }, { module: '_kernel' });
 
 const server = http.createServer(async (req, res) => {
@@ -91,7 +102,7 @@ const server = http.createServer(async (req, res) => {
       const m = router.match(req.method, url.pathname);
       if (!m) throw new ApiError(404, `Unbekannter Endpunkt ${req.method} ${url.pathname}`);
       const authCtx = auth.resolve(req);
-      const openRoutes = new Set(['/api/auth/login', '/api/auth/register', '/api/health', '/api/auth/orte']);
+      const openRoutes = new Set(['/api/auth/login', '/api/auth/register', '/api/health', '/api/auth/orte', '/api/net/info']);
       if (!authCtx && !openRoutes.has(url.pathname)) throw new ApiError(401, 'Bitte anmelden');
 
       // ─── Body-Parsing mit konfigurierbarem Limit ─────────────────────────────
@@ -206,7 +217,15 @@ process.on('uncaughtException', (e) => {
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Horrorgeticon Ops läuft → http://localhost:${PORT}`);
+  const urls = joinUrls(PORT);
+  console.log(`\nHorrorgeticon Ops läuft → http://localhost:${PORT}`);
+  console.log('─'.repeat(52));
+  console.log('  Crew verbindet sich im selben WLAN über:');
+  for (const u of urls) console.log(`   →  ${u}`);
+  console.log('  (Diese Adresse + QR-Code stehen auch im Login-Screen.)');
+  console.log('─'.repeat(52));
   console.log(`Daten: ${DATA_DIR}`);
   for (const line of db.bootReport) console.log('[db]', line);
+  // --open: Standardbrowser automatisch öffnen (für den Doppelklick-Start).
+  if (flag('open') || process.env.OPS_OPEN === '1') openBrowser(`http://localhost:${PORT}`);
 });

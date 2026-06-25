@@ -1,0 +1,117 @@
+name: Release
+
+# Auf einen Versions-Tag (z. B. v1.0.0) baut dieser Workflow die
+# auslieferbaren Artefakte und haengt sie an ein GitHub-Release:
+#   - Windows-Leitstand (portabel, ohne Installation: node.exe + App + Starter)
+#   - Android-APK (zum Sideloaden auf Crew-Tablets/Phones)
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  NODE_BUNDLE_VERSION: '20.18.1'   # in das Windows-Buendel eingebackene Node-Runtime
+
+jobs:
+  # ── Windows-Leitstand: portables Buendel, kein Installer noetig ──────────────
+  windows-leitstand:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node-Runtime fuer das Buendel laden
+        shell: pwsh
+        run: |
+          $ver = "v${env:NODE_BUNDLE_VERSION}"
+          $url = "https://nodejs.org/dist/$ver/node-$ver-win-x64.zip"
+          Write-Host "Lade $url"
+          Invoke-WebRequest -Uri $url -OutFile node.zip
+          Expand-Archive -Path node.zip -DestinationPath nodedl -Force
+
+      - name: Buendel zusammenstellen
+        shell: pwsh
+        run: |
+          $root = "dist/Horrorgeticon-Leitstand"
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          Copy-Item "nodedl/node-v${env:NODE_BUNDLE_VERSION}-win-x64/node.exe" "$root/node.exe"
+          Copy-Item -Recurse server "$root/server"
+          Copy-Item -Recurse web "$root/web"
+          Copy-Item package.json "$root/package.json"
+          Copy-Item "packaging/windows/*" $root
+          # Tests und Agenten-Artefakte gehoeren nicht ins Auslieferbuendel
+          if (Test-Path "$root/server/test") { Remove-Item -Recurse -Force "$root/server/test" }
+
+      - name: ZIP packen
+        shell: pwsh
+        run: Compress-Archive -Path "dist/Horrorgeticon-Leitstand" -DestinationPath "Horrorgeticon-Leitstand-windows-x64.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-leitstand
+          path: Horrorgeticon-Leitstand-windows-x64.zip
+          retention-days: 14
+
+  # ── Android-APK: zum Sideloaden auf Crew-Geraete ────────────────────────────
+  android-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: local.properties anlegen
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > kmp/local.properties
+
+      - name: Gradle-Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('kmp/**/*.gradle.kts', 'kmp/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Debug-APK bauen
+        run: cd kmp && ./gradlew :composeApp:assembleDebug --no-daemon --stacktrace
+
+      - name: APK einsammeln und benennen
+        run: |
+          mkdir -p out
+          cp "$(find kmp/composeApp/build/outputs/apk/debug -name '*.apk' | head -n1)" "out/Horrorgeticon-Ops-android.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: out/Horrorgeticon-Ops-android.apk
+          retention-days: 14
+
+  # ── Release erstellen und Artefakte anhaengen ───────────────────────────────
+  publish:
+    needs: [windows-leitstand, android-apk]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Artefakte auflisten
+        run: find artifacts -type f
+
+      - name: GitHub-Release veroeffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/windows-leitstand/Horrorgeticon-Leitstand-windows-x64.zip
+            artifacts/android-apk/Horrorgeticon-Ops-android.apk
+          generate_release_notes: true
+          fail_on_unmatched_files: false

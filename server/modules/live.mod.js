@@ -145,6 +145,7 @@ export default {
           selfCreated: !!p.selfCreated,
           maze: maze?.name || null, mazeId: maze?.id || null,
           position: pos ? pos.code : null, positionName: pos?.name || null,
+          callTime: maze?.callTime || null,
           status: presenceStatus(db, p.id),
           actorStatus: pr?.actorStatus || null,
           late: pr?.lateInfo || null,
@@ -174,7 +175,7 @@ export default {
           : (incidents.length || onSite.length < pos.length * 0.8) ? 'warn' : 'ok';
         const displayName = kdCfgMap[m.id] || m.name;
         return {
-          id: m.id, name: displayName, short: m.short, zone: m.zone,
+          id: m.id, name: displayName, short: m.short, zone: m.zone, callTime: m.callTime || null,
           total: pos.length, besetzt: onSite.length, vorfaelle: incidents.length, pausen: breaks.length,
           status: st,
           meta: incidents.length ? `${onSite.length}/${pos.length} · ${incidents.length} Vorfall${incidents.length > 1 ? 'e' : ''}`

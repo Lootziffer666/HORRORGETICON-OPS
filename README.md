@@ -27,8 +27,8 @@ Ohne `--demo` startet die Plattform leer für den Echtbetrieb.
 | Code      | PIN    | Rolle & Sicht                                  |
 | --------- | ------ | ---------------------------------------------- |
 | `DR-0001` | `4711` | Management → Desktop-Leitstand (alle Bereiche) |
-| `MT-0301` | `1234` | Maze Lead Asylum → Tablet-Split-Ansicht        |
-| `LK-0427` | `1234` | Scare Actor → Phone-App (A3 „Zellenblock“)     |
+| `MT-0301` | `1234` | Maze Lead THE CIRCUS → Tablet-Split-Ansicht    |
+| `LK-0427` | `1234` | Scare Actor → Phone-App (C3 „Manege“)          |
 | `SB-0901` | `1234` | Catering → Stations-Modus (Marken entwerten)   |
 
 Tests: `npm test` (241 API-End-to-End-Checks inkl. Crash-Wiederherstellung);

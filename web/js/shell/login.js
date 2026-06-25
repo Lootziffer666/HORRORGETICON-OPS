@@ -22,6 +22,7 @@ export function renderLogin(onLogin) {
             h('span', { class: mode === 'register' ? 'on' : '', onclick: () => { mode = 'register'; draw(); } }, 'Profil erstellen')),
           mode === 'login' ? loginForm(onLogin) : registerForm(onLogin),
           h('div', { class: 'sep' }),
+          joinPanel(),
           demoHint(),
           h('span', { class: 'sub', style: { textAlign: 'center' } }, 'Zugang nur für eingeteilte Crew · v1.0'))));
   };
@@ -84,10 +85,44 @@ function registerForm(onLogin) {
     btn);
 }
 
+// ───────── Crew-Beitritt: LAN-URL + QR zum Scannen ─────────
+function joinPanel() {
+  const qrBox = h('div', { style: { display: 'flex', justifyContent: 'center', padding: '6px 0' } }, h('span', { class: 'sub' }, 'lädt …'));
+  const urlLine = h('span', { class: 'mono', style: { fontSize: '13px', fontWeight: 700, color: 'var(--fg-brand, #F2B27C)' } }, '…');
+  const body = h('div', { class: 'col', style: { gap: '8px', display: 'none', alignItems: 'center' } },
+    h('span', { class: 'sub', style: { textAlign: 'center' } }, 'Mit demselben WLAN verbinden, dann scannen oder Adresse eintippen:'),
+    qrBox,
+    urlLine);
+  const head = h('div', { class: 'card pad row', style: { gap: '10px', cursor: 'pointer' } },
+    h('span', { class: 'qa ic-ring info', style: { width: '34px', height: '34px', minHeight: 0, padding: 0, border: 'none', boxShadow: 'none', background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '50%' } }, ic('qr', 17)),
+    h('div', { class: 'col grow', style: { gap: '1px' } },
+      h('span', { style: { fontSize: '13px', fontWeight: 700 } }, 'Crew per QR verbinden'),
+      h('span', { class: 'sub' }, 'Adresse + Beitritts-Code fürs Handy')),
+    ic('chev', 16, { color: 'var(--fg-muted)' }));
+  let loaded = false;
+  head.addEventListener('click', async () => {
+    const show = body.style.display === 'none';
+    body.style.display = show ? 'flex' : 'none';
+    if (show && !loaded) {
+      loaded = true;
+      try {
+        const info = await get('/api/net/info');
+        urlLine.textContent = info.joinUrl || `http://localhost:${info.port}`;
+        if (info.qrSvg) qrBox.replaceChildren(h('div', { html: info.qrSvg, style: { width: '180px', height: '180px' } }));
+        else qrBox.replaceChildren(h('span', { class: 'sub' }, 'QR nicht verfügbar — Adresse eintippen.'));
+      } catch {
+        loaded = false;
+        qrBox.replaceChildren(h('span', { class: 'sub' }, 'Beitritts-Infos nicht erreichbar.'));
+      }
+    }
+  });
+  return h('div', { class: 'col', style: { gap: '8px' } }, head, body);
+}
+
 function demoHint() {
   const open = h('div', { class: 'col', style: { gap: '6px', display: 'none' } },
-    ...[['DR-0001', '4711', 'Management · Leitstand'], ['MT-0301', '1234', 'Maze Lead · Asylum'],
-      ['LK-0427', '1234', 'Scare Actor · A3'], ['SB-0901', '1234', 'Catering · Station Nord']]
+    ...[['DR-0001', '4711', 'Management · Leitstand'], ['MT-0301', '1234', 'Maze Lead · THE CIRCUS'],
+      ['LK-0427', '1234', 'Scare Actor · C3'], ['SB-0901', '1234', 'Catering · Station Nord']]
       .map(([c, p, r]) => h('div', { class: 'row', style: { fontSize: '12px', gap: '8px' } },
         h('b', { class: 'mono' }, c), h('span', { class: 'mono', style: { color: 'var(--fg-muted)' } }, `PIN ${p}`),
         h('span', { class: 'sub' }, r))));
