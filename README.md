@@ -31,7 +31,7 @@ Ohne `--demo` startet die Plattform leer für den Echtbetrieb.
 | `LK-0427` | `1234` | Scare Actor → Phone-App (C3 „Manege“)          |
 | `SB-0901` | `1234` | Catering → Stations-Modus (Marken entwerten)   |
 
-Tests: `npm test` (241 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
+Tests: `npm test` (273 API-End-to-End-Checks inkl. Crash-Wiederherstellung);
 optionaler Browser-E2E: `server/test/ui.e2e.mjs` (47 Checks, benötigt Playwright).
 
 ---
@@ -147,7 +147,7 @@ server/            Node.js ≥ 18, null Abhängigkeiten
   kernel/          Modul-Kernel, DB (Journal/Snapshot/Backups), SSE-Bus, Auth, CSV, Geo
   modules/         23 Fachmodule (*.mod.js) — zur Laufzeit schalt- und tauschbar
   seed/            Demo-Szenario „Horrornacht“ (Datenstand der Mockups)
-  test/smoke.mjs   241 API-End-to-End-Checks (npm test)
+  test/smoke.mjs   273 API-End-to-End-Checks (npm test)
   test/ui.e2e.mjs  47 Browser-E2E-Checks (optional, Playwright)
   test/load.mjs    Lasttest (150+ SSE-Verbindungen + parallele API-Calls)
 web/               PWA — Hearthwork-Design aus dem Prototyp, kein Build-Schritt
